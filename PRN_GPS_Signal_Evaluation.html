@@ -1,0 +1,2189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRN Codes in GPS</title>
+<meta name="description" content="A step-by-step, interactive presentation on how pseudo-random noise (PRN) codes are generated and used to acquire, track and measure GPS L1 C/A signals.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    svg: { fontCache: 'global' },
+    startup: { typeset: true }
+  };
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #85847e;
+  --rule: #dfddd6;
+  --grid: #ebe9e4;
+  --s1: #2a78d6;   /* blue    */
+  --s2: #eb6834;   /* orange  */
+  --s3: #1baf7a;   /* aqua    */
+  --s4: #eda100;   /* yellow  */
+  --s7: #4a3aa7;   /* violet  */
+  --s8: #e34948;   /* red     */
+  --tint: rgba(42,120,214,.08);
+  --good: #008300;
+  --bad: #c43c3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #8f8e86;
+    --rule: #383835;
+    --grid: #2a2a27;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s7: #9085e9;
+    --s8: #e66767;
+    --tint: rgba(57,135,229,.12);
+    --good: #3fb950;
+    --bad: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #8f8e86;
+  --rule: #383835;
+  --grid: #2a2a27;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --s7: #9085e9;
+  --s8: #e66767;
+  --tint: rgba(57,135,229,.12);
+  --good: #3fb950;
+  --bad: #e66767;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+.deck { position: fixed; inset: 0 0 56px 0; }
+.slide {
+  position: absolute; inset: 0;
+  display: none;
+  overflow-y: auto;
+  padding: 28px 40px 32px;
+}
+.slide.active { display: block; animation: fade .35s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.inner { max-width: 1240px; margin: 0 auto; }
+.kicker {
+  font: 600 12px/1 "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--s1); margin-bottom: 10px;
+}
+h1 { font-size: clamp(30px, 5vw, 54px); line-height: 1.08; margin: 0 0 18px; letter-spacing: -.02em; }
+h2 { font-size: clamp(22px, 3vw, 32px); line-height: 1.15; margin: 0 0 16px; letter-spacing: -.01em; }
+h3 { font-size: 17px; margin: 18px 0 6px; }
+p, li { color: var(--ink-2); }
+p { margin: 0 0 12px; }
+ul { margin: 0 0 12px; padding-left: 20px; }
+li { margin: 4px 0; }
+strong, b { color: var(--ink); }
+code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .9em; }
+.lead { font-size: 19px; max-width: 820px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 32px; align-items: start; }
+.cols.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.cols.wide { grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr); }
+.stack > * + * { margin-top: 14px; }
+.fig {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  position: relative;
+}
+.fig + .fig { margin-top: 14px; }
+.cols > .fig + .fig { margin-top: 0; }
+.plain {
+  background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--s7);
+  border-radius: 0 10px 10px 0; padding: 10px 14px; margin: 0 0 14px; font-size: 15px; color: var(--ink-2);
+}
+.plain::before { content: "In plain words"; display: block; font: 600 11px/1.4 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--s7); margin-bottom: 3px; }
+.plain b { color: var(--ink); }
+.gloss td:first-child { white-space: nowrap; font-weight: 600; color: var(--ink); }
+.fig-title { font-weight: 600; font-size: 14px; color: var(--ink); margin-bottom: 2px; }
+.fig-cap { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+.math {
+  background: var(--surface);
+  border-left: 3px solid var(--s1);
+  border-radius: 0 8px 8px 0;
+  padding: 6px 14px;
+  margin: 10px 0 14px;
+  overflow-x: auto;
+  color: var(--ink);
+}
+.math mjx-container { margin: .4em 0 !important; font-size: 96%; }
+.note {
+  background: var(--tint);
+  border-radius: 8px; padding: 10px 14px; font-size: 14px; color: var(--ink-2); margin: 10px 0;
+}
+.note b { color: var(--ink); }
+table.data { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.data th, table.data td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--rule); }
+table.data th { color: var(--ink-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+table.data td { color: var(--ink-2); }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 4px 0 10px; font-size: 13px; color: var(--ink-2); }
+.ctrl label { display: inline-flex; align-items: center; gap: 8px; }
+.ctrl output { font: 600 12px "JetBrains Mono", monospace; color: var(--ink); min-width: 64px; }
+select, button.btn, input[type=range] { font: inherit; font-size: 13px; }
+select, button.btn {
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 8px; padding: 5px 10px; cursor: pointer;
+}
+button.btn:hover, select:hover { border-color: var(--ink-3); }
+button.btn.primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+input[type=range] { accent-color: var(--s1); width: 150px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); color: var(--ink-2); padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px; }
+.seg button.on { background: var(--s1); color: #fff; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 10px 0; }
+.stat { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.stat .v { font: 600 20px/1.2 "JetBrains Mono", monospace; color: var(--ink); }
+.stat .l { font-size: 12px; color: var(--ink-3); }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-top: 8px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; }
+.card h3 { margin-top: 6px; }
+.card .ico { width: 36px; height: 36px; }
+.agenda { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.agenda .card { cursor: pointer; transition: border-color .15s; }
+.agenda .card:hover { border-color: var(--s1); }
+.agenda .num { font: 600 12px "JetBrains Mono", monospace; color: var(--s1); }
+.title-wrap { min-height: calc(100vh - 140px); display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+.hint { font-size: 13px; color: var(--ink-3); }
+kbd { font: 600 11px "JetBrains Mono", monospace; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--surface); color: var(--ink-2); }
+
+/* plots */
+.plot { position: relative; }
+.plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.plot .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin: 2px 0 4px; }
+.plot .legend span { display: inline-flex; align-items: center; gap: 6px; }
+.plot .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.plot .legend i.dash { background: none !important; border-top: 2px dashed; height: 0; }
+.plot .legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+.plot .tip {
+  position: absolute; pointer-events: none; z-index: 5;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  padding: 6px 9px; font-size: 12px; color: var(--ink-2); white-space: nowrap; display: none;
+}
+.plot .tip b { color: var(--ink); font-weight: 600; }
+.plot .tip .row { display: flex; align-items: center; gap: 6px; }
+.plot .tip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.plot .tip .val { font-family: "JetBrains Mono", monospace; color: var(--ink); margin-left: auto; padding-left: 10px; }
+svg .grid { stroke: var(--grid); stroke-width: 1; }
+svg .axis { stroke: var(--rule); stroke-width: 1; }
+svg .tick { fill: var(--ink-3); font: 11px Inter, sans-serif; }
+svg .alabel { fill: var(--ink-2); font: 12px Inter, sans-serif; }
+svg .anno { fill: var(--ink-2); font: 11px Inter, sans-serif; }
+svg .xh { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* diagrams */
+.diagram > svg { width: 100%; height: auto; display: block; }
+.d-box { fill: var(--surface-2); stroke: var(--rule); stroke-width: 1.2; }
+.d-box.acc { fill: var(--tint); stroke: var(--s1); }
+.d-line { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.d-line.acc { stroke: var(--s1); stroke-width: 2; }
+.d-line.acc2 { stroke: var(--s2); stroke-width: 2; }
+.d-text { fill: var(--ink); font: 13px Inter, sans-serif; }
+.d-sub { fill: var(--ink-3); font: 11px Inter, sans-serif; }
+.d-mono { fill: var(--ink); font: 600 14px "JetBrains Mono", monospace; }
+.d-arrow { fill: var(--ink-2); }
+.d-xor { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.5; }
+.lfsr-out { font: 13px "JetBrains Mono", monospace; color: var(--ink-2); word-break: break-all; line-height: 1.6; }
+.lfsr-out b { color: var(--s1); }
+
+.prn-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; font-size: 12px; }
+.prn-grid div { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 7px; cursor: pointer; }
+.prn-grid div.sel { border-color: var(--s1); background: var(--tint); }
+.prn-grid .p { font-weight: 600; color: var(--ink); }
+.prn-grid .m { font-family: "JetBrains Mono", monospace; color: var(--ink-3); font-size: 11px; }
+
+.tag { display: inline-block; font: 600 11px "JetBrains Mono", monospace; padding: 2px 7px; border-radius: 999px; }
+.tag.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.tag.no { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+
+/* nav */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 56px;
+  display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  background: var(--surface); border-top: 1px solid var(--rule); z-index: 10;
+}
+.nav .bar { flex: 1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; cursor: pointer; }
+.nav .bar i { display: block; height: 100%; background: var(--s1); width: 0; transition: width .25s; }
+.nav .count { font: 600 12px "JetBrains Mono", monospace; color: var(--ink-2); min-width: 64px; text-align: center; }
+.nav .ttl { font-size: 13px; color: var(--ink-3); max-width: 34vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav button { background: none; border: 1px solid var(--rule); color: var(--ink); border-radius: 8px; height: 34px; min-width: 38px; cursor: pointer; font-size: 15px; }
+.nav button:hover { border-color: var(--ink-3); }
+
+@media (max-width: 900px) {
+  .slide { padding: 18px 16px 28px; }
+  .cols, .cols.even, .cols.wide, .title-wrap { grid-template-columns: minmax(0,1fr); gap: 18px; }
+  .cards, .agenda { grid-template-columns: minmax(0,1fr); }
+  .prn-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .nav .ttl { display: none; }
+  .title-wrap { min-height: 0; }
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+<!-- ============================ 1. TITLE ============================ -->
+<section class="slide" data-title="Title" data-init="title">
+  <div class="inner title-wrap">
+    <div>
+      <div class="kicker">GNSS signal processing · interactive tutorial</div>
+      <h1>Pseudo-Random Noise codes in GPS signal evaluation</h1>
+      <p class="lead">From shift registers to pseudoranges: a step-by-step look at how the PRN code lets a receiver <b>find</b>, <b>track</b> and <b>measure</b> a satellite signal that arrives about 17&nbsp;dB below the noise.</p>
+      <p class="hint">Navigate with <kbd>←</kbd> <kbd>→</kbd>, <kbd>Space</kbd>, or the buttons below. Every plot is computed live in your browser from the real GPS L1 C/A codes (IS-GPS-200), so you can change the parameters and watch the results update. Hover a plot to read its values.</p>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Circular autocorrelation of the PRN 1 C/A code</div>
+      <div id="title-plot"></div>
+      <div class="fig-cap">One sharp peak at zero lag and almost nothing elsewhere. That one property is what everything in this deck depends on.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 2. ROADMAP ============================ -->
+<section class="slide" data-title="Roadmap">
+  <div class="inner">
+    <div class="kicker">Roadmap</div>
+    <h2>Six parts, one signal chain</h2>
+    <p class="lead">We follow the signal the way a receiver does: what is transmitted, how the code is built, why correlation works, and how acquisition, tracking and measurement all rely on it.</p>
+    <div class="agenda" id="agenda">
+      <div class="card" data-go="pI"><div class="num" data-part="I">PART I</div><h3>The signal</h3><p>Why spread spectrum? The power budget, the three jobs of a PRN code, and the L1 C/A signal structure.</p></div>
+      <div class="card" data-go="pII"><div class="num" data-part="II">PART II</div><h3>The code</h3><p>Generating the code with LFSRs and Gold codes, then its balance, autocorrelation, cross-correlation and spectrum.</p></div>
+      <div class="card" data-go="pIII"><div class="num" data-part="III">PART III</div><h3>Spreading &amp; despreading</h3><p>Processing gain, rejecting interference, and the received-signal model.</p></div>
+      <div class="card" data-go="pIV"><div class="num" data-part="IV">PART IV</div><h3>Acquisition</h3><p>The code-phase × Doppler search, FFT correlation, a live search demo, and detection theory.</p></div>
+      <div class="card" data-go="pV"><div class="num" data-part="V">PART V</div><h3>Tracking</h3><p>Early–Prompt–Late code tracking (DLL) and Costas carrier tracking (PLL).</p></div>
+      <div class="card" data-go="pVI"><div class="num" data-part="VI">PART VI</div><h3>Measurement &amp; evaluation</h3><p>Pseudorange, ranging precision, multipath, C/N₀ estimation, signal-quality monitoring, and newer codes.</p></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================ BASICS ============================ -->
+<section class="slide" data-title="GPS basics & glossary">
+  <div class="inner">
+    <div class="kicker">Before we start · the basics in one slide</div>
+    <h2>GPS in one minute: it is a timing system</h2>
+    <div class="cols">
+      <div>
+        <div class="plain">Every GPS satellite carries an atomic clock and constantly broadcasts, in effect, <b>"I am satellite k, and this is exactly what time it is."</b> Your receiver notes <i>when</i> each message arrives. The signal travels at the speed of light, so delay × c = distance. Distances to four satellites give your position (x, y, z) plus the error of your own cheap clock.</div>
+        <div class="math">\[ \rho_k = c\,(t_{\text{receive}} - t_{\text{transmit},k}),\qquad 1\ \text{ns}\ \leftrightarrow\ 0.30\ \text{m} \]</div>
+        <p>So GPS needs to time-stamp radio signals to a few nanoseconds. Three hard problems are in the way:</p>
+        <ul>
+          <li><b>The signal is extremely weak</b>, weaker than the receiver's own thermal noise.</li>
+          <li><b>All satellites transmit on the same frequency</b> at the same time.</li>
+          <li><b>A clear "tick" is needed</b> to measure arrival time precisely.</li>
+        </ul>
+        <div class="note">A single tool, the <b>PRN code</b>, solves all three. The rest of this deck shows how, step by step: first intuitively, then with the math, then with a live simulation.</div>
+      </div>
+      <div class="fig">
+        <div class="fig-title">Glossary: the words you will meet</div>
+        <table class="data gloss">
+          <tr><td>PRN code</td><td>Pseudo-Random Noise code: a fixed, repeating sequence of +1/−1 values that looks random but is known in advance. Each satellite has its own; "PRN 7" also names the satellite.</td></tr>
+          <tr><td>Chip</td><td>One ±1 element of the code. It is called a chip, not a bit, because it carries no information. GPS sends 1.023 million chips per second.</td></tr>
+          <tr><td>Carrier</td><td>The 1575.42 MHz radio wave (the "L1" frequency) that carries the code and data.</td></tr>
+          <tr><td>Correlation</td><td>Multiply two sequences element by element and add up the products. The result is large only when they match and are aligned.</td></tr>
+          <tr><td>Processing gain</td><td>How much correlation improves the signal-to-noise ratio: about ×1023 (30 dB) per millisecond of code, ×20,460 (43 dB) per data bit.</td></tr>
+          <tr><td>Code phase</td><td>Where in its 1023-chip cycle the received code is right now. This is the time stamp.</td></tr>
+          <tr><td>Doppler</td><td>Frequency shift caused by satellite motion, up to about ±5 kHz. The receiver must match it to correlate.</td></tr>
+          <tr><td>C/N₀</td><td>Signal power ÷ noise power in 1 Hz, in dB-Hz. It is the standard "signal strength": ≈45 is good, &lt;30 is weak.</td></tr>
+          <tr><td>Acquisition</td><td>The initial search: which satellites are present, at what code phase and Doppler?</td></tr>
+          <tr><td>Tracking</td><td>Feedback loops that keep a local copy (replica) of the signal aligned as things change.</td></tr>
+          <tr><td>Pseudorange</td><td>Measured distance that still includes the receiver's clock error, hence "pseudo".</td></tr>
+          <tr><td>dB refresher</td><td>+3 dB = ×2, +10 dB = ×10, +30 dB = ×1000 (power); −17 dB ≈ 1/50.</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 3. PROBLEM ============================ -->
+<section class="slide" id="pI" data-title="The problem: below the noise" data-init="problem">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part I — The signal</div>
+      <h2>The problem: the signal is weaker than the noise</h2>
+      <div class="plain">Imagine trying to hear one person whispering in a packed stadium. You can do it if you know <b>exactly what sentence</b> they are whispering: you listen for that one pattern and ignore everything else. A GPS receiver does the same with the PRN code.</div>
+      <p>A GPS satellite orbits about 20,200&nbsp;km up and transmits about 27&nbsp;dBW EIRP. After free-space loss, the guaranteed minimum received L1 C/A power is</p>
+      <div class="math">\[ C = -158.5\ \text{dBW} = -128.5\ \text{dBm}. \]</div>
+      <p>The thermal noise density at \(T_0 = 290\,\text{K}\) is \(N_0 = kT_0 = -174\ \text{dBm/Hz}\), which gives</p>
+      <div class="math">\[ \frac{C}{N_0} = -128.5-(-174) \approx 45.5\ \text{dB-Hz} \]
+      \[ \text{SNR}_{B=2\,\text{MHz}} = \frac{C}{N_0\,B} = 45.5 - 63.0 = -17.5\ \text{dB}. \]</div>
+      <div class="note">In the receiver's 2&nbsp;MHz front-end bandwidth the noise is about <b>56× stronger</b> than the signal. A spectrum analyzer shows only the noise floor. The PRN code is what lets the receiver recover the signal anyway.</div>
+    </div>
+    <div class="stack">
+      <div class="fig">
+        <div class="fig-title">Power spectral density at the antenna (dBm/Hz)</div>
+        <div id="problem-plot"></div>
+        <div class="fig-cap">The C/A signal spreads its −128.5&nbsp;dBm over about 2&nbsp;MHz (\(C\,T_c\,\mathrm{sinc}^2(\pi f T_c)\)), so its peak density of −188.6&nbsp;dBm/Hz sits about 15&nbsp;dB under the thermal floor.</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="v">−128.5</div><div class="l">received C (dBm)</div></div>
+        <div class="stat"><div class="v">−111.0</div><div class="l">noise in 2 MHz (dBm)</div></div>
+        <div class="stat"><div class="v">45.5</div><div class="l">C/N₀ (dB-Hz)</div></div>
+        <div class="stat"><div class="v">−17.5</div><div class="l">SNR in 2 MHz (dB)</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 4. ROLES ============================ -->
+<section class="slide" data-title="Three jobs of the PRN code">
+  <div class="inner">
+    <div class="kicker" data-step>Part I — The signal</div>
+    <h2>A PRN code does three jobs at once</h2>
+      <div class="plain">Picture a party where every pair of guests speaks a different language. You hear everyone at once but understand only your own (that is <b>CDMA</b>). And if you know the song a satellite is "singing", hearing how far behind its version you are tells you the travel time (that is <b>ranging</b>).</div>
+    <div class="cols even">
+      <div>
+        <div class="cards" style="grid-template-columns:minmax(0,1fr)">
+          <div class="card"><h3 style="color:var(--s1)">① Multiple access (CDMA)</h3><p>All GPS satellites transmit on the same 1575.42&nbsp;MHz carrier. Each has its own code \(c_k\), and the codes are nearly orthogonal (\(R_{ij}\approx 0\)), so correlating with \(c_k\) picks out satellite \(k\) only.</p></div>
+          <div class="card"><h3 style="color:var(--s2)">② Ranging (a time stamp)</h3><p>The code is deterministic and tied to GPS time. Its phase at reception tells the receiver <i>when</i> it was sent. The sharp autocorrelation peak (one chip ≈ 293&nbsp;m wide) makes that timing precise to well under a metre.</p></div>
+          <div class="card"><h3 style="color:var(--s3)">③ Processing gain</h3><p>Correlation gathers energy spread over about 2&nbsp;MHz back into the 50&nbsp;Hz data bandwidth: \(10\log_{10}(1.023\cdot10^6/50)\approx 43\) dB. This lifts the signal out of the noise and suppresses narrowband interference.</p></div>
+        </div>
+      </div>
+      <div class="fig diagram">
+        <div class="fig-title">CDMA: one carrier, many codes, a bank of correlators</div>
+        <svg viewBox="0 0 640 430" role="img" aria-label="Four satellites transmit on one carrier; the receiver separates them with code correlators">
+          <defs><marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="d-arrow"/></marker></defs>
+          <g id="sats"></g>
+          <line x1="320" y1="150" x2="320" y2="170" class="d-line"/>
+          <path d="M306,150 L320,128 L334,150 Z" class="d-box"/>
+          <text x="345" y="146" class="d-sub">antenna</text>
+          <rect x="190" y="172" width="260" height="44" rx="8" class="d-box"/>
+          <text x="320" y="192" text-anchor="middle" class="d-text">r(t) = Σₖ sₖ(t) + w(t)</text>
+          <text x="320" y="208" text-anchor="middle" class="d-sub">everything superposed, below the noise</text>
+          <g id="corrbank"></g>
+        </svg>
+        <div class="fig-cap">Each correlator multiplies \(r(t)\) by its own replica and integrates. Only the matching satellite gives a peak; the others leave a residue at the level of the cross-correlation (≈ −24&nbsp;dB).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 5. L1 C/A STRUCTURE ============================ -->
+<section class="slide" data-title="L1 C/A signal structure" data-init="bpsk">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part I — The signal</div>
+      <h2>The L1 C/A signal: carrier × code × data</h2>
+      <div class="plain">The transmitted signal is three things multiplied together: a fast radio wave (the <b>carrier</b>) that crosses space, a fast ±1 pattern (the <b>code</b>) that identifies the satellite and marks time, and a slow ±1 message (the <b>data</b>) carrying orbit and clock information. Multiplying a wave by −1 just flips it upside down.</div>
+      <div class="math">\[ s_k(t)=\sqrt{2P}\;C_k(t)\,D_k(t)\,\cos\!\left(2\pi f_{L1}t+\theta_k\right) \]
+      \[ C_k(t)=\sum_{n}c_k\!\left[n \bmod 1023\right]\,p\!\left(t-nT_c\right),\quad c_k[n]=\pm1 \]</div>
+      <p>\(p(t)\) is a rectangular pulse of width \(T_c\). Every clock is derived from one atomic reference, \(f_0 = 10.23\) MHz:</p>
+      <table class="data">
+        <tr><th>Quantity</th><th>Relation</th><th class="num">Value</th></tr>
+        <tr><td>Carrier \(f_{L1}\)</td><td>\(154\,f_0\)</td><td class="num">1575.42 MHz</td></tr>
+        <tr><td>Chip rate \(R_c\)</td><td>\(f_0/10\)</td><td class="num">1.023 Mchip/s</td></tr>
+        <tr><td>Chip length \(T_c\)</td><td>\(1/R_c\) → \(cT_c\)</td><td class="num">977.5 ns → 293.05 m</td></tr>
+        <tr><td>Code length \(N\)</td><td>\(2^{10}-1\)</td><td class="num">1023 chips = 1 ms</td></tr>
+        <tr><td>Data rate</td><td>\(R_c/(20\cdot1023)\)</td><td class="num">50 bit/s (20 codes/bit)</td></tr>
+        <tr><td>Carrier cycles / chip</td><td>\(f_{L1}/R_c\)</td><td class="num">1540</td></tr>
+      </table>
+      <p style="margin-top:10px">This is <b>BPSK</b> modulation: each sign change of \(C_k D_k\) flips the carrier phase by 180°.</p>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Building the waveform (time axis in chips; carrier slowed to 2 cycles/chip so it is visible)</div>
+      <div id="bpsk-plot"></div>
+      <div class="fig-cap">Top to bottom: navigation data \(D(t)\), C/A code \(C(t)\) (first 12 chips of PRN 1), the product \(C(t)D(t)\), and the BPSK signal. The dashed lines mark the 180° phase flips; the data bit edge is at chip 6.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 6. LFSR ============================ -->
+<section class="slide" id="pII" data-title="Generating the code: LFSRs" data-init="lfsr">
+  <div class="inner cols wide">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>Generating the code: two 10-stage shift registers</h2>
+      <div class="plain">A shift register is a row of 10 one-bit memory cells. On every clock tick each cell passes its bit one place to the right, and the new leftmost bit is the XOR of a few chosen cells. With the right choice of cells the pattern repeats only after 1023 ticks. Press <b>Clock ×1</b> to watch it.</div>
+      <p>The C/A code comes from two <b>linear feedback shift registers</b> (LFSRs). Their characteristic polynomials over GF(2) are</p>
+      <div class="math">\[ G_1(x)=1+x^{3}+x^{10} \]
+      \[ G_2(x)=1+x^{2}+x^{3}+x^{6}+x^{8}+x^{9}+x^{10} \]</div>
+      <p>which, as recurrences, are</p>
+      <div class="math">\[ g_1[n]=g_1[n-3]\oplus g_1[n-10] \]
+      \[ \begin{aligned} g_2[n]=\;&g_2[n-2]\oplus g_2[n-3]\oplus g_2[n-6]\\ &\oplus g_2[n-8]\oplus g_2[n-9]\oplus g_2[n-10] \end{aligned} \]</div>
+      <p>Both polynomials are <b>primitive</b>, so each register cycles through all \(2^{10}-1=1023\) non-zero states (an <i>m-sequence</i>). Both start at all ones each epoch. Every satellite uses the same G1 and G2; only the two G2 <b>phase-selector taps</b> differ from PRN to PRN.</p>
+    </div>
+    <div class="fig diagram">
+      <div class="ctrl">
+        <label>PRN <select id="lfsr-prn"></select></label>
+        <button class="btn primary" id="lfsr-step">Clock ×1</button>
+        <button class="btn" id="lfsr-10">Clock ×10</button>
+        <button class="btn" id="lfsr-reset">Reset</button>
+        <span class="mono" id="lfsr-n"></span>
+      </div>
+      <svg viewBox="0 0 820 300" id="lfsr-svg" role="img" aria-label="G1 and G2 shift registers with feedback taps and phase selector"></svg>
+      <div class="lfsr-out" id="lfsr-out"></div>
+      <div class="fig-cap">Gray boxes are register stages 1–10. Bottom buses: feedback taps. Blue: the PRN's phase-selector taps \((s_1,s_2)\) on G2. Output chip = G1 stage 10 ⊕ G2 stage \(s_1\) ⊕ G2 stage \(s_2\).</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 7. GOLD CODES ============================ -->
+<section class="slide" data-title="Gold codes & PRN assignments" data-init="gold">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>Gold codes: one family, many PRNs</h2>
+      <div class="plain">All satellites use the same two registers. Each PRN reads G2 from a different <b>pair of cells</b>, which amounts to a different time offset of the G2 sequence. Combining G1 with differently delayed copies of G2 gives 32 (up to 1025) codes that all look unrelated to one another.</div>
+      <p>XOR-ing two G2 stages produces a <b>delayed copy</b> of the G2 m-sequence. This is the shift-and-add property of m-sequences:</p>
+      <div class="math">\[ g_2[n-s_1]\oplus g_2[n-s_2] = g_2[n-\Delta_k] \]
+      \[ \boxed{\,c_k[n]=g_1[n]\oplus g_2[n-\Delta_k]\,} \]</div>
+      <p>Adding a <i>preferred pair</i> of m-sequences at a relative delay \(\Delta_k\) gives a <b>Gold code</b>. The family has \(2^{10}+1=1025\) members, and every cross-correlation takes only three values:</p>
+      <div class="math">\[ R_{ij}(\tau)\in\left\{-1,\;-t(10),\;t(10)-2\right\}=\{-1,-65,63\} \]
+      \[ t(n)=2^{\lfloor (n+2)/2\rfloor}+1 = 65\ \ (n=10) \]</div>
+      <p>Bits map to signal levels by \(x = 1-2b\) (0 → +1, 1 → −1). Under this map XOR becomes multiplication: \(b_1\oplus b_2 \mapsto x_1x_2\).</p>
+      <div class="note" id="gold-check"></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">PRN assignments (computed live). Click a PRN.</div>
+      <div class="ctrl" style="margin-bottom:6px"><span>Each tile shows the <b>G2 taps</b>, the <b>delay Δ</b> in chips, and the <b>first 10 chips</b> in octal.</span></div>
+      <div class="prn-grid" id="prn-grid"></div>
+      <div class="fig-cap" id="prn-sel-info"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 8. WAVEFORM & BALANCE ============================ -->
+<section class="slide" data-title="Code waveform & balance" data-init="balance">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>It looks like noise, but it is fully deterministic</h2>
+      <div class="plain">A statistician handed this sequence would say it passes basic randomness tests. Yet it is completely predictable, so the receiver can generate the exact same sequence. That is what "pseudo-random" means.</div>
+      <p>Over one period, a good spreading code looks like a random coin-toss sequence:</p>
+      <ul>
+        <li><b>Balance.</b> Ones and zeros differ in count by at most one. In the ±1 domain the mean is \(\bar c = \frac1N\sum_n c[n] = \pm\frac{1}{1023}\), so there is almost no DC (carrier-leak) component.</li>
+        <li><b>Run lengths.</b> Short runs are common and long runs rare, roughly halving for each extra chip of run length, as in a random sequence.</li>
+        <li><b>Repeatability.</b> Unlike real noise, the receiver can generate the identical sequence locally. That is what makes correlation possible.</li>
+      </ul>
+      <div class="ctrl"><label>PRN <select id="bal-prn"></select></label></div>
+      <div class="stats" id="bal-stats"></div>
+    </div>
+    <div class="stack">
+      <div class="fig">
+        <div class="fig-title">First 64 chips of the code, \(c[n]\in\{+1,-1\}\)</div>
+        <div id="bal-wave"></div>
+      </div>
+      <div class="fig">
+        <div class="fig-title">Run-length histogram (one full period, both polarities)</div>
+        <div id="bal-runs"></div>
+        <div class="fig-cap">Bars show measured counts. The dashed line is the ideal random-sequence count \(\approx N/2^{\ell+1}\) for each polarity, summed over both.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================ CORRELATION INTUITION ============================ -->
+<section class="slide" data-title="What correlation does" data-init="corrdemo">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>What correlation does: multiply chip by chip, then add</h2>
+      <div class="plain">Correlation is the receiver's basic operation. It takes the received chips and its own locally generated copy of the code (the <b>replica</b>), multiplies them one by one, and adds up the products. When the replica is <b>aligned</b>, every product is (+1)(+1) or (−1)(−1) = +1, so the sum is 1023. When it is off by even <b>one chip</b>, the products are a near-random mix of +1 and −1 that cancel, and the sum stays near 0.</div>
+      <div class="math">\[ \text{corr}(k)=\sum_{n=0}^{1022} r[n]\;c\big[(n-k)\bmod 1023\big] \]
+      \[ \text{aligned: }\ \sum 1 = 1023\qquad\text{misaligned: }\ \in\{-65,\,-1,\,63\} \]</div>
+      <p>The received code in this demo is delayed by <b>12 chips</b>. Move the replica and watch the products and the sum.</p>
+      <div class="ctrl"><label>Replica shift k <input type="range" id="cd-k" min="0" max="40" step="1" value="5"><output id="cd-k-o"></output></label></div>
+      <div class="ctrl"><label>Noise σ per chip <input type="range" id="cd-s" min="0" max="3" step="0.1" value="0"><output id="cd-s-o"></output></label></div>
+      <div class="stats" id="cd-stats"></div>
+      <p class="hint">Turn the noise up to σ = 3 (individual chips are now unreadable). The aligned sum (~1023) still towers over the noise in the sum (σ√1023 ≈ 96). That is processing gain at work, covered in Part III.</p>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">First 40 chips: received, replica, and their product</div><div id="cd-rows"></div></div>
+      <div class="fig"><div class="fig-title">Sum of all 1023 products vs replica shift k</div><div id="cd-sum"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 9. AUTOCORRELATION ============================ -->
+<section class="slide" data-title="Autocorrelation" data-init="acorr">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>Autocorrelation: one peak, small sidelobes</h2>
+      <div class="plain">Now do the correlation from the previous slide for <b>every</b> possible shift. You get one tall spike where the code lines up with itself, and small values everywhere else (at most 65 out of 1023). So the question "am I aligned?" has a clear yes/no answer.</div>
+      <p>Correlating the code with a cyclically shifted copy of itself gives</p>
+      <div class="math">\[ R_k(\tau)=\frac{1}{N}\sum_{n=0}^{N-1}c_k[n]\,c_k\!\left[(n+\tau)\bmod N\right] \]
+      \[ R_k(0)=1,\qquad R_k(\tau\neq0)\in\left\{-\tfrac{1}{1023},\,-\tfrac{65}{1023},\,+\tfrac{63}{1023}\right\} \]</div>
+      <p>The ratio of the main peak to the largest sidelobe is</p>
+      <div class="math">\[ 20\log_{10}\frac{1023}{65}\approx 23.9\ \text{dB}. \]</div>
+      <p><b>Why it matters:</b> when a local replica is aligned within one chip the receiver sees the full signal energy; anywhere else it sees almost none. Code alignment is therefore detectable, and that is the basis of acquisition (Part IV).</p>
+      <div class="ctrl"><label>PRN <select id="ac-prn"></select></label></div>
+      <div class="note" id="ac-vals"></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">\(R_k(\tau)\) for all 1023 integer chip lags</div>
+      <div id="ac-plot"></div>
+      <div class="fig-cap">Dashed lines mark +63/1023 and −65/1023. Every off-peak lag takes one of the three sidelobe values.</div>
+      <div class="fig-title" style="margin-top:12px">Zoom: lags −20 … +20</div>
+      <div id="ac-zoom"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 10. CONTINUOUS TRIANGLE ============================ -->
+<section class="slide" data-title="Correlation triangle & resolution" data-init="tri">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>Zooming in: the correlation triangle</h2>
+      <div class="plain">Between "perfectly aligned" and "one chip off", the match falls off linearly, like the sides of a tent. Because the sides slope, the receiver can tell not only <b>whether</b> it is aligned but <b>which way and by how much</b> it is off. That is how it measures distance far more finely than one chip (293 m).</div>
+      <p>With rectangular chips and continuous delay \(\tau\), the peak becomes a triangle two chips wide:</p>
+      <div class="math">\[ R(\tau)\approx\begin{cases}1-\dfrac{|\tau|}{T_c}, & |\tau|\le T_c\\[4pt] \approx -\tfrac{1}{N}\ \text{(or a sidelobe)}, & |\tau|\gt T_c\end{cases} \]</div>
+      <p>The triangle's slope is the <b>ranging lever</b>. A delay error \(\Delta\tau\) changes the correlation by \(\Delta\tau/T_c\), and the tracking loop (Part V) uses that change to hold the replica on the peak.</p>
+      <div class="stats">
+        <div class="stat"><div class="v">293.05 m</div><div class="l">1 chip × c</div></div>
+        <div class="stat"><div class="v">±1 chip</div><div class="l">capture width</div></div>
+        <div class="stat"><div class="v">~0.3–3 m</div><div class="l">typical code-tracking σ</div></div>
+      </div>
+      <div class="ctrl"><label>Front-end bandwidth (two-sided) <input type="range" id="tri-bw" min="1" max="12" step="0.5" value="12"><output id="tri-bw-o"></output></label></div>
+      <p class="hint">A finite bandwidth rounds the tip of the triangle. That makes the peak harder to locate and is one reason high-end receivers use wide front-ends.</p>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Correlation of the sampled PRN 1 code vs delay</div>
+      <div id="tri-plot"></div>
+      <div class="fig-cap">Dots: computed correlation of the actual code (20 samples/chip), band-limited by an ideal low-pass of the chosen bandwidth. Line: the ideal infinite-bandwidth triangle.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 11. CROSS-CORRELATION ============================ -->
+<section class="slide" data-title="Cross-correlation" data-init="xcorr">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>Cross-correlation: keeping satellites apart</h2>
+      <div class="plain">Correlate satellite 1's replica against satellite 2's signal and you get only small, noise-like values, never a spike. This is how one receiver listens to 10 or more satellites on the same frequency at the same time.</div>
+      <div class="math">\[ R_{ij}(\tau)=\frac{1}{N}\sum_{n=0}^{N-1}c_i[n]\,c_j\!\left[(n+\tau)\bmod N\right]\in\frac{\{-1,-65,63\}}{1023} \]</div>
+      <p>Any two C/A codes leak at most \(65/1023\), which is <b>−23.9 dB</b>. That is the CDMA isolation between satellites, and it is limited:</p>
+      <div class="note"><b>Near–far problem.</b> If satellite \(j\) is received about 20&nbsp;dB stronger than satellite \(i\) (for example, high elevation vs. a blocked low one), a cross-correlation spike of \(c_j\) in the \(c_i\) search can be about as large as \(i\)'s true peak. Receivers must check acquisitions for false locks of this kind. Doppler offsets between satellites make the cross-correlation slightly worse again (the limit is about −21&nbsp;dB).</div>
+      <div class="ctrl">
+        <label>PRN i <select id="xc-i"></select></label>
+        <label>PRN j <select id="xc-j"></select></label>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="fig">
+        <div class="fig-title" id="xc-title">Cross-correlation \(R_{ij}(\tau)\)</div>
+        <div id="xc-plot"></div>
+      </div>
+      <div class="fig">
+        <div class="fig-title">Distribution over all 496 PRN pairs × 1023 lags (507,408 values)</div>
+        <div id="xc-hist"></div>
+        <div class="fig-cap" id="xc-hist-cap">Computed with FFT correlation…</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 12. SPECTRUM ============================ -->
+<section class="slide" data-title="Power spectrum" data-init="spec">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part II — The code</div>
+      <h2>The spectrum: sinc² envelope, 1 kHz lines</h2>
+      <div class="plain">Switching between +1 and −1 a million times per second spreads the signal's power over about 2 MHz, so the power in any 1 Hz slice is tiny. That is why the signal hides under the noise. Because the code repeats every 1 ms, the spectrum is really a comb of lines 1 kHz apart.</div>
+      <p>The code repeats every \(T=1\) ms, so its spectrum is a set of <b>lines spaced \(1/T = 1\) kHz</b>. Their envelope follows the spectrum of a single rectangular chip:</p>
+      <div class="math">\[ S_C(f)=\sum_{m}\left|a_m\right|^2\,\delta\!\left(f-\frac{m}{T}\right) \]
+      \[ |a_m|^2\approx\frac{1}{N}\,\mathrm{sinc}^2\!\left(\pi\,\frac{m}{T}\,T_c\right) \]
+      \[ \text{null-to-null bandwidth}=2R_c=2.046\ \text{MHz} \]</div>
+      <ul>
+        <li>About 90% of the power lies in the main lobe, \(|f|\lt 1.023\) MHz.</li>
+        <li>Each line holds about \(1/1023\) of the power (−30 dB). The DC line holds only \((1/1023)^2\) (−60 dB) because the code is balanced.</li>
+        <li>Spreading lowers the peak spectral density by \(10\log_{10}(R_c/R_b)\). This is why the signal sat under the noise floor in the first plot of Part I.</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <div class="fig">
+        <div class="fig-title">Line spectrum of PRN 1 (FFT of 1 ms at 4.096 MHz), dB relative to total power</div>
+        <div id="spec-wide"></div>
+      </div>
+      <div class="fig">
+        <div class="fig-title">Zoom on ±12 kHz: the individual 1 kHz lines</div>
+        <div id="spec-zoom"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 13. SPREAD / DESPREAD ============================ -->
+<section class="slide" id="pIII" data-title="Spreading & despreading" data-init="spread">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part III — Spreading &amp; despreading</div>
+      <h2>Despreading: multiply by the code again</h2>
+      <div class="plain">Multiply by the code twice and you get back what you started with, because (±1)² = 1. Noise multiplied by the code is still just noise. Adding up many chips then grows the signal ×L but the noise only ×√L. That is how a signal below the noise is recovered.</div>
+      <p>Because \(c[n]^2 = 1\), multiplying by the aligned replica undoes the spreading. The noise, which is uncorrelated with the code, stays noise:</p>
+      <div class="math">\[ r[n]=d[n]\,c[n]+w[n]\ \Longrightarrow\ c[n]\,r[n]=d[n]+\underbrace{c[n]\,w[n]}_{\text{still white}} \]
+      \[ z_m=\sum_{n\in\text{bit }m}c[n]\,r[n]=L\,d_m+\mathcal N\!\left(0,\,L\sigma^2\right) \]</div>
+      <p>Summing \(L\) chips adds the signal coherently (×\(L\) in amplitude) and the noise incoherently (×\(\sqrt L\)), so the SNR improves by a factor of \(L\). This is the <b>processing gain</b>:</p>
+      <div class="math">\[ G_p=\frac{R_c}{R_b}=\frac{1.023\times10^{6}}{50}=20460\;\Rightarrow\;43.1\ \text{dB} \]</div>
+      <div class="ctrl">
+        <label>Noise σ per chip <input type="range" id="sp-sig" min="0" max="4" step="0.1" value="2"><output id="sp-sig-o"></output></label>
+        <button class="btn" id="sp-new">New noise</button>
+      </div>
+      <div class="note" id="sp-res"></div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">Illustration: 6 data bits × 32 chips/bit (real GPS: 20,460 chips/bit)</div>
+      <div id="sp-plot"></div>
+      <div class="fig-cap">With per-chip SNR far below 0 dB the received chips (row 4) look like pure noise. After despreading and integrate-and-dump (row 5) the bits come back. The dashed outline in row 5 is the transmitted bit pattern ±L.</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================ PROCESSING GAIN ============================ -->
+<section class="slide" data-title="Processing gain" data-init="pgain">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part III — Spreading &amp; despreading</div>
+      <h2>Processing gain: the number that makes GPS work</h2>
+      <div class="plain"><b>Processing gain</b> is how much the signal-to-noise ratio improves when the receiver correlates, that is, multiplies by the code and sums. Each chip carries a little signal and a lot of noise. Adding up N chips makes the signal N times bigger, but random noise grows only √N times, so the power SNR improves by a factor of <b>N</b>. It is the same reason averaging many noisy measurements gives a precise answer.</div>
+      <div class="math">\[ G_p=\frac{B_{\text{spread}}}{B_{\text{despread}}}=\frac{R_c}{1/T}=R_c\,T\;=\;N_{\text{chips summed}} \]
+      \[ \text{SNR}_{\text{out}}\,[\text{dB}]=\text{SNR}_{\text{chip}}\,[\text{dB}]+10\log_{10}G_p \]
+      \[ \text{SNR}_{\text{out}}=\frac{C}{N_0R_c}\cdot R_cT=\frac{C}{N_0}\,T \]</div>
+      <p>The spreading bandwidth cancels: what counts in the end is only C/N₀ and how long the receiver integrates.</p>
+      <table class="data">
+        <tr><th>Sum over</th><th class="num">Chips N</th><th class="num">G<sub>p</sub></th><th class="num">SNR at 45 dB-Hz</th></tr>
+        <tr><td>1 chip (no correlation)</td><td class="num">1</td><td class="num">0 dB</td><td class="num">−15.1 dB</td></tr>
+        <tr><td>1 ms (one code period)</td><td class="num">1023</td><td class="num">30.1 dB</td><td class="num">+15.0 dB</td></tr>
+        <tr><td>20 ms (one data bit)</td><td class="num">20,460</td><td class="num">43.1 dB</td><td class="num">+28.0 dB</td></tr>
+      </table>
+      <div class="note" style="margin-top:12px"><b>Why not sum forever?</b> Data bits flip the sign every 20 ms, oscillator noise and receiver motion rotate the carrier phase, and any Doppler error causes a sinc² loss (see the search-grid slide). Beyond about 20 ms receivers add <i>powers</i> non-coherently, which gains less than 3 dB per doubling.</div>
+      <div class="ctrl"><label>C/N₀ <input type="range" id="pg-cn0" min="25" max="50" step="0.5" value="45"><output id="pg-cn0-o"></output></label></div>
+      <div class="ctrl"><label>Chips summed N <input type="range" id="pg-n" min="0" max="4.31" step="0.01" value="2"><output id="pg-n-o"></output></label></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">SNR at each stage of the receiver</div><div id="pg-bars"></div>
+        <div class="fig-cap">The signal starts about 15–21 dB <i>below</i> the noise and ends 15–28 dB <i>above</i> it. Every dB of that climb is processing gain. The dashed line is the E<sub>b</sub>/N₀ ≈ 9.6 dB needed for a 10⁻⁵ bit-error rate.</div></div>
+      <div class="fig"><div class="fig-title" id="pg-dist-t">Correlator output: noise only vs signal + noise</div><div id="pg-dist"></div>
+        <div class="fig-cap">Both curves are in units of the output noise σ. Their separation is \(\sqrt{N\cdot\text{SNR}_{\text{chip}}}\), so summing more chips pulls the "signal" hump away from the "noise" hump until a threshold can tell them apart.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 14. INTERFERENCE ============================ -->
+<section class="slide" data-title="Interference rejection" data-init="jam">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part III — Spreading &amp; despreading</div>
+      <h2>In the frequency domain: what despreading does to interference</h2>
+      <div class="plain">Despreading is selective. It squeezes the matching GPS signal into a narrow peak and smears everything else, jammers included, thinly across 2 MHz. A narrow filter then keeps the peak and throws away most of the smeared interference. This is processing gain seen in the frequency domain.</div>
+      <p>Multiplying by \(c(t)\) convolves every spectrum with the code's spectrum. That operation <b>collapses</b> the matched signal into a narrow line and <b>spreads</b> everything else, including a narrowband interferer, across about 2&nbsp;MHz.</p>
+      <div class="math">\[ \left(\frac{S}{J}\right)_{\text{out}}\approx\left(\frac{S}{J}\right)_{\text{in}}+G_p \]
+      \[ \left(\frac{J}{S}\right)_{\max}=G_p-\left(\frac{S}{N}\right)_{\text{req}}-L_{\text{sys}} \]</div>
+      <p>Example: a CW interferer 30&nbsp;dB <i>stronger</i> than the GPS signal. After despreading, only the fraction of its power that falls inside the 50&nbsp;Hz data bandwidth matters:</p>
+      <div class="math">\[ \left(\frac{J}{S}\right)_{\text{out}} \approx +30 - 43.1 = -13.1\ \text{dB} \]</div>
+      <p>The signal ends up 13 dB <i>above</i> an interferer that started 30 dB stronger. That 43 dB swing is the processing gain.</p>
+      <div class="ctrl"><label>Interferer J/S <input type="range" id="jam-js" min="0" max="50" step="1" value="30"><output id="jam-js-o"></output></label></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Before despreading (dB relative to N₀)</div><div id="jam-before"></div></div>
+      <div class="fig"><div class="fig-title">After multiplying by the aligned replica \(c(t)\)</div><div id="jam-after"></div>
+        <div class="fig-cap">The narrow features are drawn about 25&nbsp;kHz wide so they show at this scale (true widths are ~100&nbsp;Hz for the data and the CW line). Peak heights are physically scaled.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 15. RECEIVED SIGNAL MODEL ============================ -->
+<section class="slide" data-title="Received-signal model" data-init="raw">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part III — Spreading &amp; despreading</div>
+      <h2>What the receiver actually samples</h2>
+      <div class="plain">This is what the receiver's analog-to-digital converter actually delivers. The orange signal is in there but hidden about 11× below the noise. Everything from here on is about pulling four unknowns per satellite out of data like this.</div>
+      <p>After down-conversion and digitization (complex baseband, sample period \(T_s\)):</p>
+      <div class="math">\[ \begin{aligned} r[n]=\sum_{k}A_k\,D_k[n]\;&c_k\!\Big(\big(nT_s-\tau_k\big)\big(1+\tfrac{f_{D,k}}{f_{L1}}\big)\Big)\\ &\cdot e^{\,j\left(2\pi f_{D,k}nT_s+\phi_k\right)}+w[n] \end{aligned} \]</div>
+      <p>For every visible satellite \(k\) the receiver must estimate:</p>
+      <table class="data">
+        <tr><th>Unknown</th><th>Meaning</th><th>Found by</th></tr>
+        <tr><td>\(\tau_k\)</td><td>code delay → <b>range</b></td><td>acquisition → DLL</td></tr>
+        <tr><td>\(f_{D,k}\)</td><td>Doppler (±5 kHz) → velocity</td><td>acquisition → FLL/PLL</td></tr>
+        <tr><td>\(\phi_k\)</td><td>carrier phase</td><td>PLL (Costas)</td></tr>
+        <tr><td>\(D_k\)</td><td>navigation bits</td><td>sign of prompt \(I_P\)</td></tr>
+      </table>
+      <p style="margin-top:10px">Note the <b>code Doppler</b> term: the chip rate is scaled by \(1+f_D/f_{L1}\), so a 5&nbsp;kHz carrier Doppler shifts the chip rate by \(5000/1540\approx3.2\) chips/s.</p>
+      <div class="math">\[ \frac{A^2}{\sigma_w^2}=\frac{C/N_0}{f_s}=45-66.1=-21.1\ \text{dB per sample} \]</div>
+    </div>
+    <div class="fig">
+      <div class="fig-title">First 300 samples (real part) at C/N₀ = 45 dB-Hz, f<sub>s</sub> = 4.096 MHz</div>
+      <div id="raw-plot"></div>
+      <div class="fig-cap">Blue: the samples as received. Orange: the PRN 7 signal component alone, about 11× smaller in amplitude than the noise. No threshold on individual samples could find it; only correlation over thousands of samples can.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 16. ACQUISITION SEARCH SPACE ============================ -->
+<section class="slide" id="pIV" data-title="Acquisition: the search space">
+  <div class="inner">
+    <div class="kicker" data-step>Part IV — Acquisition</div>
+    <h2>Acquisition: a 2-D search over code phase and Doppler</h2>
+      <div class="plain">Before it can track anything, the receiver must find out which satellites are present, where in their code they are, and how much they are Doppler-shifted. It is like tuning an old radio without knowing the station's frequency <i>or</i> when its program started. The receiver tries every combination of time offset and frequency and looks for the one cell that lights up.</div>
+    <div class="cols">
+      <div>
+        <p>For each candidate PRN \(k\), code phase \(\hat\tau\) and Doppler \(\hat f\), the receiver correlates over a coherent interval \(T_{coh}=NT_s\):</p>
+        <div class="math">\[ I+jQ=\sum_{n=0}^{N-1}r[n]\;c_k\!\left(nT_s-\hat\tau\right)\,e^{-j2\pi\hat f\,nT_s} \]
+        \[ S_k(\hat\tau,\hat f)=I^2+Q^2\quad\text{(phase-independent)} \]
+        \[ \bar S_k=\sum_{m=1}^{K}S_k^{(m)}\quad\text{(non-coherent sum of }K\text{ blocks)} \]</div>
+        <table class="data">
+          <tr><th>Dimension</th><th>Range</th><th>Step</th><th class="num">Bins</th></tr>
+          <tr><td>Code phase</td><td>0 … 1023 chips</td><td>½ chip</td><td class="num">2046</td></tr>
+          <tr><td>Doppler</td><td>±10 kHz</td><td>\(\approx \tfrac{2}{3T_{coh}}\) → 500 Hz</td><td class="num">41</td></tr>
+          <tr><td colspan="3"><b>Cells per PRN</b></td><td class="num"><b>83,886</b></td></tr>
+        </table>
+        <p style="margin-top:10px">Serial search over \(N\) code phases costs \(O(N^2)\) per Doppler bin. Because correlation over code phase is a circular convolution, an FFT gives all \(N\) phases at once:</p>
+        <div class="math">\[ \mathbf z_{\hat f}=\mathcal F^{-1}\!\left\{\,\mathcal F\{r[n]e^{-j2\pi\hat f nT_s}\}\cdot\mathcal F\{c_k[n]\}^{*}\right\}\quad O(N\log N) \]</div>
+      </div>
+      <div class="stack">
+        <div class="fig diagram">
+          <div class="fig-title">Parallel code-phase search (FFT acquisition)</div>
+          <svg viewBox="0 0 660 230" role="img" aria-label="Block diagram of FFT-based parallel code-phase search">
+            <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="d-arrow"/></marker></defs>
+            <text x="10" y="64" class="d-mono">r[n]</text>
+            <line x1="52" y1="60" x2="78" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <circle cx="92" cy="60" r="13" class="d-xor"/><text x="92" y="65" text-anchor="middle" class="d-text">×</text>
+            <line x1="92" y1="112" x2="92" y2="75" class="d-line" marker-end="url(#ar2)"/>
+            <rect x="40" y="112" width="104" height="44" rx="6" class="d-box"/>
+            <text x="92" y="131" text-anchor="middle" class="d-text">e^(−j2πfnTₛ)</text>
+            <text x="92" y="147" text-anchor="middle" class="d-sub">carrier wipe-off</text>
+            <line x1="105" y1="60" x2="160" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <rect x="162" y="40" width="70" height="40" rx="6" class="d-box acc"/><text x="197" y="65" text-anchor="middle" class="d-text">FFT</text>
+            <line x1="232" y1="60" x2="276" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <circle cx="290" cy="60" r="13" class="d-xor"/><text x="290" y="65" text-anchor="middle" class="d-text">×</text>
+            <rect x="222" y="150" width="136" height="44" rx="6" class="d-box"/>
+            <text x="290" y="169" text-anchor="middle" class="d-text">conj(FFT(cₖ[n]))</text>
+            <text x="290" y="185" text-anchor="middle" class="d-sub">pre-computed per PRN</text>
+            <line x1="290" y1="150" x2="290" y2="75" class="d-line" marker-end="url(#ar2)"/>
+            <line x1="303" y1="60" x2="340" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <rect x="342" y="40" width="70" height="40" rx="6" class="d-box acc"/><text x="377" y="65" text-anchor="middle" class="d-text">IFFT</text>
+            <line x1="412" y1="60" x2="440" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <rect x="442" y="40" width="58" height="40" rx="6" class="d-box"/><text x="471" y="65" text-anchor="middle" class="d-text">|·|²</text>
+            <line x1="500" y1="60" x2="528" y2="60" class="d-line" marker-end="url(#ar2)"/>
+            <rect x="530" y="34" width="122" height="52" rx="6" class="d-box acc"/>
+            <text x="591" y="56" text-anchor="middle" class="d-text">S(τ, f)</text>
+            <text x="591" y="73" text-anchor="middle" class="d-sub">all τ at once</text>
+            <text x="440" y="130" class="d-sub">repeat for each Doppler bin f</text>
+            <text x="440" y="146" class="d-sub">(41 bins × K blocks)</text>
+            <text x="440" y="176" class="d-sub">detect: max S &gt; V_t ?</text>
+          </svg>
+        </div>
+        <div class="fig diagram">
+          <div class="fig-title">The search grid (schematic): one cell lights up</div>
+          <svg viewBox="0 0 660 190" id="grid-svg" role="img" aria-label="Search grid with one detected cell"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 17. ACQUISITION DEMO ============================ -->
+<section class="slide" data-title="Acquisition demo" data-init="acq">
+  <div class="inner">
+    <div class="kicker" data-step>Part IV — Acquisition · live simulation</div>
+    <h2>Live acquisition: search a simulated sky</h2>
+      <div class="plain">Pick a PRN and your browser runs the full search. A bright spot means "found". A weak satellite may need more milliseconds of averaging (K) before its spot rises above the noise: more summing means more processing gain.</div>
+    <div class="cols wide">
+      <div>
+        <p>The simulation contains three satellites plus white noise, sampled at 4.096 MHz. The FFT search on the previous slide runs in your browser over 41 Doppler bins.</p>
+        <table class="data" id="acq-truth"></table>
+        <div class="ctrl" style="margin-top:12px">
+          <label>Search PRN <select id="acq-prn"></select></label>
+        </div>
+        <div class="ctrl">
+          <label>Non-coherent blocks K <input type="range" id="acq-k" min="1" max="10" step="1" value="1"><output id="acq-k-o"></output></label>
+        </div>
+        <div class="ctrl">
+          <label>C/N₀ offset (all sats) <input type="range" id="acq-off" min="-12" max="6" step="1" value="0"><output id="acq-off-o"></output></label>
+        </div>
+        <div class="ctrl">
+          <span class="seg" id="acq-view"><button data-v="heat" class="on">Heat map</button><button data-v="ridge">3-D ridge</button></span>
+        </div>
+        <div class="stats" id="acq-stats"></div>
+        <p class="hint">Try this: search PRN 24 (39 dB-Hz). At K = 1 it is lost in the noise; raise K step by step and its peak climbs out (with this noise sample it crosses the threshold at K = 10, or at a lower K if you add C/N₀ offset). Search a PRN that is not present (for example 5): only the noise floor and cross-correlation residue appear. The threshold is set for P<sub>fa</sub> = 10⁻³ over the whole grid.</p>
+      </div>
+      <div class="stack">
+        <div class="fig">
+          <div class="fig-title" id="acq-title">Search result</div>
+          <div id="acq-map"></div>
+          <div class="fig-cap">Heat map is max-pooled over ±3 chips for display, so the 1-chip-wide peak is visible. Hover for exact values.</div>
+        </div>
+        <div class="cols even" style="gap:14px">
+          <div class="fig"><div class="fig-title">Slice at best Doppler</div><div id="acq-code"></div></div>
+          <div class="fig"><div class="fig-title">Slice at best code phase</div><div id="acq-dop"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 18. LOSSES ============================ -->
+<section class="slide" data-title="Search-grid losses" data-init="loss">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part IV — Acquisition</div>
+      <h2>How fine must the grid be? Doppler and code-phase losses</h2>
+      <div class="plain">If the frequency guess is a bit off, the signal's phase drifts during the sum and partly cancels itself. If the code guess is a fraction of a chip off, the receiver lands on the side of the tent instead of the top. The grid spacing trades search effort against lost signal.</div>
+      <p>A residual frequency error \(\Delta f\) makes the phasor rotate during the integration, so the coherent sum partly cancels:</p>
+      <div class="math">\[ \left|\frac{1}{T}\int_0^{T}e^{j2\pi\Delta f t}\,dt\right|^2=\mathrm{sinc}^2(\pi\,\Delta f\,T_{coh}) \]</div>
+      <p>A code-phase error \(\Delta\tau\) samples the triangle off its peak:</p>
+      <div class="math">\[ L_\tau=\left(1-\frac{|\Delta\tau|}{T_c}\right)^2 \]</div>
+      <table class="data">
+        <tr><th>Grid choice</th><th>Worst-case error</th><th class="num">Loss</th></tr>
+        <tr><td>500 Hz bins, \(T_{coh}\)=1 ms</td><td>Δf = 250 Hz</td><td class="num">−0.91 dB</td></tr>
+        <tr><td>500 Hz bins, \(T_{coh}\)=2 ms</td><td>Δf = 250 Hz</td><td class="num">−3.92 dB</td></tr>
+        <tr><td>½-chip code steps</td><td>Δτ = ¼ chip</td><td class="num">−2.50 dB</td></tr>
+      </table>
+      <div class="note"><b>Trade-off:</b> a longer \(T_{coh}\) gives more gain (\(\propto T_{coh}\)) but needs finer Doppler bins (\(\propto 1/T_{coh}\)). The search therefore grows quadratically, and data-bit transitions every 20 ms cap \(T_{coh}\) unless the bits are known.</div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Frequency-mismatch loss \(\mathrm{sinc}^2(\pi\Delta fT_{coh})\)</div><div id="loss-f"></div></div>
+      <div class="fig"><div class="fig-title">Code-phase mismatch loss</div><div id="loss-t"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 19. DETECTION ============================ -->
+<section class="slide" data-title="Detection theory" data-init="det">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part IV — Acquisition</div>
+      <h2>Signal present or not? Detection theory</h2>
+      <div class="plain">This is like setting a smoke alarm's sensitivity. Set the threshold too low and noise alone triggers false alarms; set it too high and real signals are missed. The two curves show the correlator output with and without a signal. More integration time (more processing gain) pulls them apart.</div>
+      <p>Take the envelope \(z=\sqrt{I^2+Q^2}\), where \(I\) and \(Q\) each carry Gaussian noise of variance \(\sigma^2\):</p>
+      <div class="math">\[ H_0:\ p_0(z)=\frac{z}{\sigma^2}\,e^{-z^2/2\sigma^2}\quad\text{(Rayleigh)} \]
+      \[ H_1:\ p_1(z)=\frac{z}{\sigma^2}\,e^{-(z^2+A^2)/2\sigma^2}\,I_0\!\left(\frac{zA}{\sigma^2}\right)\quad\text{(Rice)} \]
+      \[ P_{fa}=e^{-V_t^2/2\sigma^2}\Rightarrow V_t=\sigma\sqrt{-2\ln P_{fa}},\qquad P_d=Q_1\!\left(\frac{A}{\sigma},\frac{V_t}{\sigma}\right) \]
+      \[ \frac{A^2}{2\sigma^2}=\frac{C}{N_0}\,T_{coh}\quad\text{(post-correlation SNR)} \]</div>
+      <div class="ctrl"><label>C/N₀ <input type="range" id="det-cn0" min="25" max="50" step="0.5" value="38"><output id="det-cn0-o"></output></label></div>
+      <div class="ctrl"><label>T<sub>coh</sub> <input type="range" id="det-t" min="1" max="20" step="1" value="2"><output id="det-t-o"></output></label></div>
+      <div class="ctrl"><label>log₁₀ P<sub>fa</sub> <input type="range" id="det-pfa" min="-7" max="-1" step="0.5" value="-3"><output id="det-pfa-o"></output></label></div>
+      <div class="stats" id="det-stats"></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Envelope distributions and threshold</div><div id="det-pdf"></div>
+        <div class="fig-cap">Shaded areas right of \(V_t\): orange is \(P_{fa}\) (under H₀), blue is \(P_d\) (under H₁).</div></div>
+      <div class="fig"><div class="fig-title">Detection probability vs C/N₀ (at the chosen P<sub>fa</sub>)</div><div id="det-roc"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 20. DLL ============================ -->
+<section class="slide" id="pV" data-title="Code tracking: the DLL" data-init="dll">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part V — Tracking</div>
+      <h2>Code tracking: Early – Prompt – Late</h2>
+      <div class="plain">Three correlators sit slightly <b>early</b>, <b>on time</b> (prompt) and slightly <b>late</b>. If early and late see equal correlation, the prompt one is on the peak. If late sees more, the replica is running ahead of the true signal, and the loop delays it until they balance, like a balance scale.</div>
+      <p>Once acquired, a <b>delay lock loop</b> keeps the replica on the peak. Three replicas are correlated, offset by \(\pm d/2\) chips (\(\varepsilon=\hat\tau-\tau\)):</p>
+      <div class="math">\[ E=R\!\left(\varepsilon-\tfrac d2\right),\quad P=R(\varepsilon),\quad L=R\!\left(\varepsilon+\tfrac d2\right) \]
+      \[ D(\varepsilon)=\frac{2-d}{2}\cdot\frac{|E|-|L|}{|E|+|L|}\ \approx\ \varepsilon\quad\text{for }|\varepsilon|\lt\tfrac d2 \]
+      \[ \hat\tau_{k+1}=\hat\tau_k-K_{\text{loop}}\,\bar D_k \]</div>
+      <p>The normalized early-minus-late envelope discriminator is insensitive to carrier phase and to signal amplitude. Its linear range is \(\pm d/2\) and its pull-in range is \(\pm(1+d/2)\) chips.</p>
+      <div class="ctrl"><label>Code error ε <input type="range" id="dll-e" min="-1.5" max="1.5" step="0.01" value="0.25"><output id="dll-e-o"></output></label></div>
+      <div class="ctrl"><label>E–L spacing d <input type="range" id="dll-d" min="0.1" max="1" step="0.05" value="1"><output id="dll-d-o"></output></label></div>
+      <div class="stats" id="dll-stats"></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Correlators on the triangle</div><div id="dll-tri"></div></div>
+      <div class="fig"><div class="fig-title">S-curve of the raw early-minus-late discriminator \(\tfrac12(|E|-|L|)\)</div><div id="dll-s"></div>
+        <div class="fig-cap">Slope 1 through zero (it measures ε directly) up to ±d/2, then a plateau, then it falls back to zero at ±(1 + d/2) chips: beyond that, the loop is blind. Narrower spacing has a shorter linear region but less noise and multipath error (see the precision and multipath slides).</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 21. COSTAS ============================ -->
+<section class="slide" data-title="Carrier tracking: Costas PLL" data-init="costas">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part V — Tracking</div>
+      <h2>Carrier tracking: the Costas loop and bit recovery</h2>
+      <div class="plain">The code loop keeps the timing; this loop keeps the replica carrier in phase with the incoming carrier. When locked, all the energy sits on the I axis and the sign of I is the data bit. The Costas trick keeps working even though the data bits keep flipping the sign.</div>
+      <p>After code wipe-off with the prompt replica, the integrate-and-dump outputs are</p>
+      <div class="math">\[ I_P=\tfrac{A}{2}\,D\,R(\varepsilon)\cos\theta_e+n_I,\qquad Q_P=\tfrac{A}{2}\,D\,R(\varepsilon)\sin\theta_e+n_Q \]
+      \[ D_{\text{Costas}}=\arctan\!\left(\frac{Q_P}{I_P}\right)=\theta_e\quad(|\theta_e|\lt\pi/2) \]</div>
+      <p>The data sign \(D=\pm1\) cancels in \(Q_P/I_P\), so the loop tolerates bit flips. The price is a <b>180° ambiguity</b>, which is resolved later with the navigation preamble. When locked, the bits are simply \(\hat D=\mathrm{sign}(I_P)\).</p>
+      <p>The tracked Doppler also <b>aids the DLL</b>: \(f_{\text{code}}=R_c\,(1+f_D/f_{L1})\).</p>
+      <div class="ctrl"><label>Phase error θₑ <input type="range" id="cos-th" min="-180" max="180" step="1" value="25"><output id="cos-th-o"></output></label></div>
+      <div class="ctrl"><label>C/N₀ <input type="range" id="cos-cn0" min="25" max="50" step="1" value="40"><output id="cos-cn0-o"></output></label></div>
+      <div class="note" id="cos-res"></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Prompt I/Q constellation (200 × 20 ms)</div><div id="cos-iq"></div></div>
+      <div class="fig"><div class="fig-title">Phase discriminators vs true phase error</div><div id="cos-disc"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 22. PSEUDORANGE ============================ -->
+<section class="slide" id="pVI" data-title="From code phase to pseudorange" data-init="prange">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part VI — Measurement &amp; evaluation</div>
+      <h2>From code phase to pseudorange</h2>
+      <div class="plain">The code phase gives the fraction of the current millisecond; counting whole milliseconds (using the data bits) gives the rest. Multiply the total travel time by the speed of light to get the range. It is called <b>pseudo</b>range because the receiver's clock is off by an unknown amount, which is solved for along with position.</div>
+      <p>The tracked code phase gives the satellite's <b>transmit time</b>, read from the received signal:</p>
+      <div class="math">\[ t_{tx,k}=\underbrace{\text{TOW}}_{\text{subframe}}+\underbrace{N_{ms}\cdot 1\,\text{ms}}_{\text{bit/epoch count}}+\underbrace{\hat\tau_k/R_c}_{\text{DLL}} \]
+      \[ \rho_k=c\,(t_{rx}-t_{tx,k})=\|\mathbf r_k-\mathbf r_u\|+c\,(\delta t_u-\delta t^{k})+I_k+T_k+\varepsilon_k \]</div>
+      <ul>
+        <li>The code phase alone is <b>ambiguous modulo 1 ms</b> (299.79 km). Bit synchronization (20 ms) and the subframe TOW (6 s) resolve the whole milliseconds.</li>
+        <li>\(\delta t_u\), the receiver clock bias, is the same for all satellites. It is the fourth unknown, which is why a fix needs at least 4 PRNs.</li>
+        <li>\(I_k, T_k\): ionospheric and tropospheric delays. \(\varepsilon_k\): noise and multipath, the terms the code design directly affects.</li>
+      </ul>
+      <div class="ctrl"><label>Measured code phase (chips) <input type="range" id="pr-tau" min="0" max="1022.9" step="0.1" value="412.3"><output id="pr-tau-o"></output></label></div>
+      <div class="ctrl"><label>Whole ms N<sub>ms</sub> <input type="range" id="pr-n" min="64" max="89" step="1" value="72"><output id="pr-n-o"></output></label></div>
+      <div class="stats" id="pr-stats"></div>
+    </div>
+    <div class="fig diagram">
+      <div class="fig-title">Timing picture: code epochs as a clock</div>
+      <svg viewBox="0 0 660 330" id="pr-svg" role="img" aria-label="Transmit and receive code-epoch timelines"></svg>
+      <div class="fig-cap">Each 1 ms code epoch is a tick on the satellite's clock. The receiver counts whole epochs (via bit and frame sync) and measures the fractional part with the DLL to sub-chip precision.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 23. PRECISION ============================ -->
+<section class="slide" data-title="Ranging precision" data-init="prec">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part VI — Measurement &amp; evaluation</div>
+      <h2>How precise is the code measurement?</h2>
+      <div class="plain">Noise makes the measured peak position jitter. More signal, a slower (narrower-bandwidth) loop, or more closely spaced early/late correlators all reduce the jitter, taking code ranging from metres down to centimetres.</div>
+      <p>Thermal-noise jitter of a non-coherent early-minus-late power DLL (rectangular chips, infinite bandwidth):</p>
+      <div class="math">\[ \sigma_\tau=\sqrt{\frac{B_n\,d}{2\,C/N_0}\left[1+\frac{2}{(2-d)\,T_{coh}\,C/N_0}\right]}\ \ \text{chips} \]
+      \[ \sigma_\rho=\sigma_\tau\cdot 293.05\ \text{m} \]</div>
+      <ul>
+        <li>\(B_n\): loop noise bandwidth. Narrower averages more noise but follows dynamics more slowly.</li>
+        <li>\(d\): early–late spacing. A narrow correlator (\(d=0.1\)) cuts jitter by about \(\sqrt{10}\).</li>
+        <li>The bracketed term is the <b>squaring loss</b>, which matters only at low C/N₀.</li>
+      </ul>
+      <div class="ctrl"><label>B<sub>n</sub> <input type="range" id="pr-bn" min="0.1" max="5" step="0.1" value="1"><output id="pr-bn-o"></output></label></div>
+      <div class="ctrl"><label>T<sub>coh</sub> <input type="range" id="pr-t" min="1" max="20" step="1" value="20"><output id="pr-t-o"></output></label></div>
+      <div class="note">The Cramér–Rao bound links precision to the signal's <b>RMS bandwidth</b> \(\beta\): \(\sigma_\tau\ge 1/\big(2\pi\beta\sqrt{2\,T\,C/N_0}\big)\). Codes with faster chipping or sharper spectra, such as L5 (10.23 Mcps) or BOC, have a larger β and range more precisely.</div>
+    </div>
+    <div class="fig"><div class="fig-title">1-σ code-range jitter vs C/N₀</div><div id="prec-plot"></div>
+      <div class="fig-cap">Log-scaled y axis (metres). Hover to read values.</div></div>
+  </div>
+</section>
+
+<!-- ============================ 24. MULTIPATH ============================ -->
+<section class="slide" data-title="Multipath" data-init="mp">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part VI — Measurement &amp; evaluation</div>
+      <h2>Multipath: a second triangle bends the peak</h2>
+      <div class="plain">An echo off a building or the ground arrives slightly late and adds a second, smaller tent. The combined shape is lopsided, so the early/late balance point shifts and the range comes out wrong, by up to tens of metres. Echoes more than about 1.5 chips (~450 m of extra path) late miss the tent and do no harm.</div>
+      <p>A reflection with relative amplitude \(\alpha\), extra delay \(\delta\) and phase \(\phi\) adds a delayed copy of the correlation function:</p>
+      <div class="math">\[ R_c(\tau)=R(\tau)+\alpha\cos\phi\;R(\tau-\delta) \]
+      \[ \text{lock point: } \big|R_c(\varepsilon-\tfrac d2)\big|=\big|R_c(\varepsilon+\tfrac d2)\big|\ \Rightarrow\ \varepsilon_{mp}(\alpha,\delta,\phi,d) \]</div>
+      <p>The DLL balances E and L on a distorted triangle, so the lock point moves away from the true peak. The resulting range error is largest for reflections delayed by about \(d/2\) to \(1\) chip. Reflections beyond \(1+d/2\) chips have no effect. This is the code's built-in multipath rejection.</p>
+      <div class="ctrl"><label>α <input type="range" id="mp-a" min="0" max="0.9" step="0.05" value="0.5"><output id="mp-a-o"></output></label></div>
+      <div class="ctrl"><label>δ (chips) <input type="range" id="mp-dl" min="0" max="1.6" step="0.02" value="0.4"><output id="mp-dl-o"></output></label></div>
+      <div class="ctrl"><label>Phase <span class="seg" id="mp-ph"><button data-v="0" class="on">in-phase 0°</button><button data-v="180">out-of-phase 180°</button></span></label></div>
+      <div class="ctrl"><label>d <input type="range" id="mp-d" min="0.1" max="1" step="0.05" value="1"><output id="mp-d-o"></output></label></div>
+      <div class="stats" id="mp-stats"></div>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">Direct, reflected and composite correlation</div><div id="mp-corr"></div></div>
+      <div class="fig"><div class="fig-title">Multipath error envelope (α = <span id="mp-env-a">0.5</span>), in metres</div><div id="mp-env"></div>
+        <div class="fig-cap">Solid lines: in-phase reflection (upper bound). Dashed: out-of-phase (lower bound). Blue: d = 1 chip. Orange: d = 0.1 chip.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 25. C/N0 & SQM ============================ -->
+<section class="slide" data-title="C/N₀ estimation & signal quality" data-init="cn0">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part VI — Measurement &amp; evaluation</div>
+      <h2>Evaluating the signal: C/N₀ and quality monitors</h2>
+      <div class="plain">Receivers continuously report how strong each signal is (C/N₀) by comparing how much the prompt output adds up coherently versus how much power it has in total. Quality monitors check the tent's shape for distortions that would point to a satellite fault, multipath or interference.</div>
+      <p>The prompt correlator also gives the receiver's main signal-quality metric. The <b>narrowband–wideband power ratio</b> (NWPR) estimator, over \(M\) dumps of length \(T\) within one data bit:</p>
+      <div class="math">\[ \text{WBP}=\sum_{i=1}^{M}\left(I_i^2+Q_i^2\right),\quad \text{NBP}=\Big(\sum_{i=1}^{M}I_i\Big)^2+\Big(\sum_{i=1}^{M}Q_i\Big)^2 \]
+      \[ \hat\mu=\Big\langle \tfrac{\text{NBP}}{\text{WBP}}\Big\rangle_K,\qquad \widehat{C/N_0}=10\log_{10}\!\left(\frac{1}{T}\,\frac{\hat\mu-1}{M-\hat\mu}\right) \]</div>
+      <p>Other correlator-based evaluations:</p>
+      <ul>
+        <li><b>PLL lock detector:</b> \(\cos2\theta_e\approx\frac{(\sum I)^2-(\sum Q)^2}{(\sum I)^2+(\sum Q)^2}\) (≈1 when locked).</li>
+        <li><b>Signal-quality monitoring (SQM):</b> several correlator pairs at spacings \(d_i\) give symmetry tests \(\Delta_i=\frac{E_i-L_i}{P}\) and ratio tests \(\frac{E_i+L_i}{P}\). These detect distorted "evil waveforms" and multipath (see the 1993 SVN19 anomaly).</li>
+        <li><b>Cross-correlation check:</b> reject a "lock" whose C/N₀ is about 24 dB below a strong satellite at a code/Doppler offset where a cross-correlation spike is expected.</li>
+      </ul>
+    </div>
+    <div class="stack">
+      <div class="fig"><div class="fig-title">NWPR estimate vs true C/N₀ (simulated; M = 20, T = 1 ms, K = 50)</div><div id="cn0-plot"></div>
+        <div class="fig-cap">Each dot is one 1-second estimate. The estimator loses accuracy below about 28 dB-Hz, where the noise power dominates the ratio.</div></div>
+      <div class="ctrl"><button class="btn" id="cn0-new">Re-run simulation</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 26. MODERN CODES ============================ -->
+<section class="slide" data-title="Beyond C/A: modern codes" data-init="modern">
+  <div class="inner cols">
+    <div>
+      <div class="kicker" data-step>Part VI — Measurement &amp; evaluation</div>
+      <h2>Beyond C/A: how newer signals improve the code</h2>
+      <div class="plain">Newer signals use longer codes (better separation between satellites and more processing gain per code period), faster chips (a sharper tent, so better precision), and data-free "pilot" components that allow longer summing for weak signals.</div>
+      <p>C/A is short (1023 chips), which makes acquisition fast but limits isolation to about −24 dB. Newer signals use longer codes, faster chipping, pilot channels without data, and secondary (overlay) codes:</p>
+      <table class="data">
+        <tr><th>Signal</th><th>Primary code</th><th class="num">Length</th><th class="num">Rate (Mcps)</th><th class="num">Period</th></tr>
+        <tr><td>GPS L1 C/A</td><td>Gold</td><td class="num">1023</td><td class="num">1.023</td><td class="num">1 ms</td></tr>
+        <tr><td>GPS L2C (CM / CL)</td><td>truncated m-seq.</td><td class="num">10230 / 767250</td><td class="num">0.5115 each</td><td class="num">20 ms / 1.5 s</td></tr>
+        <tr><td>GPS L5 (I5 / Q5)</td><td>XOR of m-seq. + NH</td><td class="num">10230</td><td class="num">10.23</td><td class="num">1 ms</td></tr>
+        <tr><td>GPS L1C</td><td>Weil</td><td class="num">10230</td><td class="num">1.023 (BOC/TMBOC)</td><td class="num">10 ms</td></tr>
+        <tr><td>Galileo E1 B/C</td><td>memory codes</td><td class="num">4092</td><td class="num">1.023 (CBOC)</td><td class="num">4 ms</td></tr>
+        <tr><td>Galileo E5a / E5b</td><td>m-seq. based</td><td class="num">10230</td><td class="num">10.23</td><td class="num">1 ms</td></tr>
+        <tr><td>BeiDou B1I</td><td>Gold</td><td class="num">2046</td><td class="num">2.046</td><td class="num">1 ms</td></tr>
+        <tr><td>GLONASS L1OF</td><td>m-sequence (FDMA)</td><td class="num">511</td><td class="num">0.511</td><td class="num">1 ms</td></tr>
+      </table>
+    </div>
+    <div class="fig"><div class="fig-title">Rule of thumb: typical cross-correlation level vs code length (≈ 1/√N)</div><div id="modern-plot"></div>
+      <div class="fig-cap">The line shows \(20\log_{10}(1/\sqrt N)\). The dots mark C/A's worst case (65/1023) and typical (≈ 1/√N) values. Longer codes buy isolation but cost acquisition time (more code phases) unless the receiver has assistance.</div></div>
+  </div>
+</section>
+
+<!-- ============================ 27. SUMMARY ============================ -->
+<section class="slide" data-title="Summary">
+  <div class="inner">
+    <div class="kicker">Summary</div>
+    <h2>The PRN code at every stage of the receiver</h2>
+    <div class="fig diagram">
+      <svg viewBox="0 0 1000 160" role="img" aria-label="Receiver pipeline and the role of the PRN at each stage">
+        <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="d-arrow"/></marker></defs>
+        <g id="pipe"></g>
+      </svg>
+    </div>
+    <div class="cards" style="margin-top:16px">
+      <div class="card"><h3>Generate</h3><p>\(c_k[n]=g_1[n]\oplus g_2[n-\Delta_k]\). Gold family; balanced, noise-like, reproducible.</p></div>
+      <div class="card"><h3>Correlate</h3><p>\(R_k(0)=1\), \(|R_k(\tau\neq0)|,|R_{ij}|\le 65/1023\). Gives CDMA separation and a 43 dB processing gain.</p></div>
+      <div class="card"><h3>Acquire</h3><p>Search \(S(\hat\tau,\hat f)=I^2+Q^2\) over 1023 chips × ±10 kHz. FFT makes it fast; Rayleigh/Rice statistics set the threshold.</p></div>
+      <div class="card"><h3>Track</h3><p>The E−L discriminator on the triangle \(1-|\tau|/T_c\) (DLL), and \(\arctan(Q_P/I_P)\) for the carrier (Costas).</p></div>
+      <div class="card"><h3>Measure</h3><p>\(\rho=c(t_{rx}-t_{tx})\) with \(t_{tx}\) from TOW + ms count + code phase. Jitter \(\propto\sqrt{B_n d/(C/N_0)}\).</p></div>
+      <div class="card"><h3>Evaluate</h3><p>C/N₀ (NWPR), lock detectors, SQM symmetry tests, cross-correlation checks, multipath envelopes.</p></div>
+    </div>
+    <p class="hint" style="margin-top:16px">References: IS-GPS-200 (signal specification); Kaplan &amp; Hegarty, <i>Understanding GPS/GNSS</i>; Misra &amp; Enge, <i>Global Positioning System</i>; Borre et al., <i>A Software-Defined GPS and Galileo Receiver</i>.</p>
+  </div>
+</section>
+
+</div>
+
+<nav class="nav" aria-label="Slide navigation">
+  <button id="prev" title="Previous (←)">←</button>
+  <button id="next" title="Next (→)">→</button>
+  <span class="count" id="count"></span>
+  <div class="bar" id="bar"><i></i></div>
+  <span class="ttl" id="ttl"></span>
+  <button id="theme" title="Toggle light/dark">◐</button>
+</nav>
+
+<script>
+"use strict";
+/* =====================================================================
+   Signal-processing core
+   ===================================================================== */
+const FCHIP = 1.023e6, FL1 = 1575.42e6, NCHIP = 1023, CLIGHT = 299792458;
+const CHIP_M = CLIGHT / FCHIP;
+// IS-GPS-200 G2 phase-selector taps for PRN 1..32
+const G2_TAPS = [[2,6],[3,7],[4,8],[5,9],[1,9],[2,10],[1,8],[2,9],[3,10],[2,3],[3,4],[5,6],[6,7],[7,8],[8,9],[9,10],
+                 [1,4],[2,5],[3,6],[4,7],[5,8],[6,9],[1,3],[4,6],[5,7],[6,8],[7,9],[8,10],[1,6],[2,7],[3,8],[4,9]];
+// IS-GPS-200 Table 3-Ia: first 10 chips (octal) and G2 delay, used to self-check the generator
+const IS_OCT = [1440,1620,1710,1744,1133,1455,1131,1454,1626,1504,1642,1750,1764,1772,1775,1776,
+                1156,1467,1633,1715,1746,1763,1063,1706,1743,1761,1770,1774,1127,1453,1625,1712];
+const IS_DELAY = [5,6,7,8,17,18,139,140,141,251,252,254,255,256,257,258,469,470,471,472,473,474,509,512,513,514,515,516,859,860,861,862];
+
+const _caCache = {};
+function caGen(prn) {
+  if (_caCache[prn]) return _caCache[prn];
+  const g1 = new Uint8Array(11).fill(1), g2 = new Uint8Array(11).fill(1);
+  const [a, b] = G2_TAPS[prn - 1];
+  const bits = new Uint8Array(NCHIP), g2s = new Uint8Array(NCHIP), g2i = new Uint8Array(NCHIP);
+  for (let i = 0; i < NCHIP; i++) {
+    g2s[i] = g2[10]; g2i[i] = g2[a] ^ g2[b];
+    bits[i] = g1[10] ^ g2[a] ^ g2[b];
+    const f1 = g1[3] ^ g1[10], f2 = g2[2] ^ g2[3] ^ g2[6] ^ g2[8] ^ g2[9] ^ g2[10];
+    for (let k = 10; k > 1; k--) { g1[k] = g1[k - 1]; g2[k] = g2[k - 1]; }
+    g1[1] = f1; g2[1] = f2;
+  }
+  let delay = -1;
+  for (let k = 0; k < NCHIP && delay < 0; k++) {
+    let ok = true;
+    for (let i = 0; i < NCHIP; i++) if (g2i[i] !== g2s[(i - k + NCHIP) % NCHIP]) { ok = false; break; }
+    if (ok) delay = k;
+  }
+  let v = 0; for (let i = 0; i < 10; i++) v = v * 2 + bits[i];
+  const pm = new Int8Array(NCHIP); for (let i = 0; i < NCHIP; i++) pm[i] = 1 - 2 * bits[i];
+  return (_caCache[prn] = { bits, pm, delay, octal: parseInt(v.toString(8), 10), taps: [a, b] });
+}
+const ca = prn => caGen(prn).pm;
+
+function circCorr(a, b) {
+  const N = a.length, out = new Float64Array(N);
+  for (let t = 0; t < N; t++) { let s = 0; for (let n = 0; n < N; n++) s += a[n] * b[(n + t) % N]; out[t] = s; }
+  return out;
+}
+
+// radix-2 FFT with cached twiddles
+const _tw = {};
+function fft(re, im, inv) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  let tw = _tw[n];
+  if (!tw) { tw = _tw[n] = { c: new Float64Array(n / 2), s: new Float64Array(n / 2) };
+    for (let k = 0; k < n / 2; k++) { tw.c[k] = Math.cos(2 * Math.PI * k / n); tw.s[k] = Math.sin(2 * Math.PI * k / n); } }
+  const sg = inv ? 1 : -1;
+  for (let len = 2; len <= n; len <<= 1) {
+    const half = len >> 1, step = n / len;
+    for (let i = 0; i < n; i += len) {
+      for (let k = 0; k < half; k++) {
+        const wr = tw.c[k * step], wi = sg * tw.s[k * step];
+        const p = i + k, q = p + half;
+        const xr = re[q] * wr - im[q] * wi, xi = re[q] * wi + im[q] * wr;
+        re[q] = re[p] - xr; im[q] = im[p] - xi; re[p] += xr; im[p] += xi;
+      }
+    }
+  }
+  if (inv) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+}
+
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function gaussFn(r) { let spare = null; return () => { if (spare !== null) { const s = spare; spare = null; return s; }
+  let u = 0; while (u === 0) u = r(); const v = r(); const m = Math.sqrt(-2 * Math.log(u)); spare = m * Math.sin(2 * Math.PI * v); return m * Math.cos(2 * Math.PI * v); }; }
+const dB = x => 10 * Math.log10(x);
+const sinc = x => Math.abs(x) < 1e-12 ? 1 : Math.sin(x) / x;
+const range = (a, b, n) => Array.from({ length: n }, (_, i) => a + (b - a) * i / (n - 1));
+const tri = t => Math.max(0, 1 - Math.abs(t));
+const fmt = (v, d = 2) => (Number.isFinite(v) ? (Math.abs(v) < 1e-12 ? 0 : +v.toFixed(d)).toLocaleString('en-US', { maximumFractionDigits: d }) : '–');
+// exponentially scaled modified Bessel I0 (Abramowitz & Stegun 9.8.1/9.8.2)
+function i0e(x) {
+  const ax = Math.abs(x);
+  if (ax < 3.75) { const y = (x / 3.75) ** 2;
+    return Math.exp(-ax) * (1 + y * (3.5156229 + y * (3.0899424 + y * (1.2067492 + y * (0.2659732 + y * (0.0360768 + y * 0.0045813)))))); }
+  const y = 3.75 / ax;
+  return (1 / Math.sqrt(ax)) * (0.39894228 + y * (0.01328592 + y * (0.00225319 + y * (-0.00157565 + y * (0.00916281 + y * (-0.02057706 + y * (0.02635537 + y * (-0.01647633 + y * 0.00392377))))))));
+}
+const ricePdf = (z, A) => z * Math.exp(-((z - A) ** 2) / 2) * i0e(z * A); // sigma = 1
+function marcumQ1(A, Vt) {
+  const hi = Math.max(A, Vt) + 12, n = 2000, h = (hi - Vt) / n;
+  let s = ricePdf(Vt, A) + ricePdf(hi, A);
+  for (let i = 1; i < n; i++) s += (i % 2 ? 4 : 2) * ricePdf(Vt + i * h, A);
+  return Math.min(1, s * h / 3);
+}
+function gammaTail(K, x) { let term = 1, s = 1; for (let i = 1; i < K; i++) { term *= x / i; s += term; } return Math.exp(-x) * s; }
+function gammaThresh(K, p) { let lo = 0, hi = 400; for (let i = 0; i < 80; i++) { const m = (lo + hi) / 2; if (gammaTail(K, m) > p) lo = m; else hi = m; } return (lo + hi) / 2; }
+
+/* =====================================================================
+   Plot helper (SVG, hover crosshair + tooltip)
+   ===================================================================== */
+let _pid = 0;
+function niceTicks(a, b, n = 6) {
+  const span = b - a; if (span <= 0) return [a];
+  const s0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(s0))), r = s0 / mag;
+  const step = (r < 1.5 ? 1 : r < 3 ? 2 : r < 7 ? 5 : 10) * mag;
+  const t = []; for (let v = Math.ceil(a / step - 1e-9) * step; v <= b + step * 1e-9; v += step) t.push(+v.toPrecision(12));
+  return t;
+}
+const col = c => `var(--${c || 's1'})`;
+
+function plot(el, o) {
+  el.innerHTML = ''; el.classList.add('plot');
+  const W = o.w || 640, H = o.h || 280;
+  const m = Object.assign({ l: 56, r: 14, t: 12, b: 42 }, o.m || {});
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const [x0, x1] = o.xd, [y0, y1] = o.yd;
+  const ylog = !!o.ylog;
+  const yT = v => ylog ? Math.log10(Math.max(v, 1e-12)) : v;
+  const Y0 = yT(y0), Y1 = yT(y1);
+  const sx = v => m.l + (v - x0) / (x1 - x0) * iw;
+  const sy = v => m.t + ih - (yT(v) - Y0) / (Y1 - Y0) * ih;
+  const fx = o.fx || (v => fmt(v, 3)), fy = o.fy || (v => fmt(v, 3));
+  const id = 'c' + (++_pid);
+  const series = o.series || [];
+  const named = series.filter(s => s.name && !s.nolegend);
+  if (named.length >= 2 || o.legend) {
+    const lg = document.createElement('div'); lg.className = 'legend';
+    lg.innerHTML = named.map(s => `<span><i class="${s.kind === 'dots' ? 'dot' : s.dash ? 'dash' : ''}" style="background:${col(s.c)};border-color:${col(s.c)}"></i>${s.name}</span>`).join('');
+    el.appendChild(lg);
+  }
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="${id}"><rect x="${m.l}" y="${m.t - 2}" width="${iw}" height="${ih + 4}"/></clipPath></defs>`;
+  // grid + ticks
+  let yt;
+  if (ylog) { yt = []; for (let e = Math.ceil(Y0); e <= Math.floor(Y1); e++) yt.push(Math.pow(10, e)); }
+  else yt = o.yticks || niceTicks(y0, y1, o.ny || 5);
+  const xt = o.xticks || niceTicks(x0, x1, o.nx || 7);
+  for (const v of yt) { const y = sy(v); s += `<line class="grid" x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}"/><text class="tick" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${o.fyt ? o.fyt(v) : fy(v)}</text>`; }
+  for (const v of xt) { const x = sx(v); s += `<text class="tick" x="${x}" y="${m.t + ih + 16}" text-anchor="middle">${o.fxt ? o.fxt(v) : fx(v)}</text>`; }
+  s += `<line class="axis" x1="${m.l}" x2="${m.l + iw}" y1="${m.t + ih}" y2="${m.t + ih}"/>`;
+  if (o.xl) s += `<text class="alabel" x="${m.l + iw / 2}" y="${H - 6}" text-anchor="middle">${o.xl}</text>`;
+  if (o.yl) s += `<text class="alabel" transform="translate(13 ${m.t + ih / 2}) rotate(-90)" text-anchor="middle">${o.yl}</text>`;
+  s += `<g clip-path="url(#${id})">`;
+  for (const a of (o.anno || [])) if (a.type === 'band') s += `<rect x="${sx(a.x0)}" y="${m.t}" width="${sx(a.x1) - sx(a.x0)}" height="${ih}" fill="${a.fill || 'var(--tint)'}"/>`;
+  if (o.image) { const im = o.image; s += `<image href="${im.href}" x="${sx(im.x0)}" y="${sy(im.y1)}" width="${sx(im.x1) - sx(im.x0)}" height="${sy(im.y0) - sy(im.y1)}" preserveAspectRatio="none" style="image-rendering:pixelated"/>`; }
+  if (o.raw) s += o.raw({ sx, sy, m, iw, ih });
+  const base = o.base !== undefined ? o.base : Math.max(y0, Math.min(0, y1));
+  for (const se of series) {
+    const c = col(se.c), X = se.x, Yv = se.y;
+    const dash = se.dash ? `stroke-dasharray="${se.dash === true ? '6 4' : se.dash}"` : '';
+    if (se.kind === 'stem') {
+      let d = ''; const b = sy(se.base !== undefined ? se.base : base);
+      for (let i = 0; i < X.length; i++) d += `M${sx(X[i]).toFixed(2)},${b.toFixed(2)}V${sy(Yv[i]).toFixed(2)}`;
+      s += `<path d="${d}" stroke="${c}" stroke-width="${se.sw || 1.2}" fill="none" opacity="${se.op || 1}"/>`;
+    } else if (se.kind === 'dots') {
+      for (let i = 0; i < X.length; i++) s += `<circle cx="${sx(X[i]).toFixed(2)}" cy="${sy(Yv[i]).toFixed(2)}" r="${se.r || 4}" fill="${c}" stroke="var(--surface)" stroke-width="1.5" opacity="${se.op || 1}"/>`;
+    } else if (se.kind === 'bars') {
+      const bw = se.bw || 1, b = sy(base);
+      for (let i = 0; i < X.length; i++) { const xl = sx(X[i] - bw * 0.4), xr = sx(X[i] + bw * 0.4), yy = sy(Yv[i]);
+        s += `<rect x="${xl}" y="${Math.min(yy, b)}" width="${Math.max(1, xr - xl)}" height="${Math.abs(b - yy)}" rx="2" fill="${c}"/>`; }
+    } else if (se.kind === 'step') {
+      const dx = se.dx || 1; let d = `M${sx(X[0])},${sy(Yv[0])}`;
+      for (let i = 0; i < X.length; i++) { d += `V${sy(Yv[i]).toFixed(2)}H${sx(X[i] + dx).toFixed(2)}`; }
+      s += `<path d="${d}" stroke="${c}" stroke-width="${se.sw || 2}" fill="none" ${dash} stroke-linejoin="round"/>`;
+    } else {
+      let d = ''; let pen = false;
+      for (let i = 0; i < X.length; i++) { const yv = Yv[i]; if (!Number.isFinite(yv)) { pen = false; continue; }
+        d += (pen ? 'L' : 'M') + sx(X[i]).toFixed(2) + ',' + sy(yv).toFixed(2); pen = true; }
+      if (se.kind === 'area') {
+        const b = sy(se.base !== undefined ? se.base : base);
+        s += `<path d="${d}L${sx(X[X.length - 1])},${b}L${sx(X[0])},${b}Z" fill="${c}" opacity="${se.op || 0.22}" stroke="none"/>`;
+      } else s += `<path d="${d}" stroke="${c}" stroke-width="${se.sw || 2}" fill="none" ${dash} stroke-linejoin="round" stroke-linecap="round" opacity="${se.op || 1}"/>`;
+    }
+  }
+  for (const a of (o.anno || [])) {
+    if (a.type === 'vline') { const x = sx(a.x); s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${m.t + ih}" stroke="${a.c ? col(a.c) : 'var(--ink-3)'}" stroke-width="${a.sw || 1.2}" stroke-dasharray="${a.dash || '4 3'}"/>`;
+      if (a.label) s += `<text class="anno" x="${x + 4}" y="${m.t + 12 + (a.dy || 0)}">${a.label}</text>`; }
+    if (a.type === 'hline') { const y = sy(a.y); s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}" stroke="${a.c ? col(a.c) : 'var(--ink-3)'}" stroke-width="${a.sw || 1.2}" stroke-dasharray="${a.dash || '4 3'}"/>`;
+      if (a.label) s += `<text class="anno" x="${a.right ? m.l + iw - 4 : m.l + 4}" y="${y - 5}" text-anchor="${a.right ? 'end' : 'start'}">${a.label}</text>`; }
+    if (a.type === 'pt') { s += `<circle cx="${sx(a.x)}" cy="${sy(a.y)}" r="${a.r || 5}" fill="${col(a.c)}" stroke="var(--surface)" stroke-width="2"/>`;
+      if (a.label) s += `<text class="anno" x="${sx(a.x) + (a.dx || 8)}" y="${sy(a.y) + (a.dy || -8)}" text-anchor="${a.anchor || 'start'}" style="fill:var(--ink)">${a.label}</text>`; }
+    if (a.type === 'text') s += `<text class="anno" x="${sx(a.x)}" y="${sy(a.y)}" text-anchor="${a.anchor || 'start'}">${a.label}</text>`;
+  }
+  s += `</g><g class="hov"></g><rect class="ov" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
+  el.insertAdjacentHTML('beforeend', s);
+  if (o.nohover) return;
+  const svg = el.querySelector('svg'), hov = svg.querySelector('.hov'), tip = document.createElement('div');
+  tip.className = 'tip'; el.appendChild(tip);
+  const hoverable = series.filter(se => se.hover !== false && se.kind !== 'area' && se.name);
+  const move = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const xv = x0 + (p.x - m.l) / iw * (x1 - x0);
+    const yv = ylog ? Math.pow(10, Y0 + (m.t + ih - p.y) / ih * (Y1 - Y0)) : y0 + (m.t + ih - p.y) / ih * (y1 - y0);
+    let html = '', g = '';
+    if (o.hover2d) {
+      const r = o.hover2d(xv, yv); if (!r) { hide(); return; }
+      html = r; g = `<line class="xh" x1="${p.x}" x2="${p.x}" y1="${m.t}" y2="${m.t + ih}"/><line class="xh" x1="${m.l}" x2="${m.l + iw}" y1="${p.y}" y2="${p.y}"/>`;
+    } else {
+      const rows = []; let snapX = null;
+      for (const se of hoverable) {
+        let bi = -1;
+        if (se.kind === 'dots') { let bd = Infinity; for (let i = 0; i < se.x.length; i++) { const d = (sx(se.x[i]) - p.x) ** 2 + (sy(se.y[i]) - p.y) ** 2; if (d < bd) { bd = d; bi = i; } } if (bd > 900) bi = -1; }
+        else { let lo = 0, hi = se.x.length - 1; const tx = se.kind === 'step' ? xv - (se.dx || 1) / 2 : xv;
+          while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (se.x[mid] < tx) lo = mid; else hi = mid; }
+          bi = Math.abs(se.x[lo] - tx) <= Math.abs(se.x[hi] - tx) ? lo : hi; }
+        if (bi < 0 || !Number.isFinite(se.y[bi])) continue;
+        if (snapX === null) snapX = se.x[bi];
+        rows.push({ se, x: se.x[bi], y: se.y[bi] });
+        g += `<circle cx="${sx(se.x[bi]) + (se.kind === 'step' ? (sx(se.dx || 1) - sx(0)) / 2 : 0)}" cy="${sy(se.y[bi])}" r="4.5" fill="${col(se.c)}" stroke="var(--surface)" stroke-width="2"/>`;
+      }
+      if (!rows.length) { hide(); return; }
+      const xs = snapX + (rows[0].se.kind === 'step' ? (rows[0].se.dx || 1) / 2 : 0);
+      if (rows[0].se.kind !== 'dots') g = `<line class="xh" x1="${sx(xs)}" x2="${sx(xs)}" y1="${m.t}" y2="${m.t + ih}"/>` + g;
+      const xlab = o.xname || 'x';
+      html = `<b>${xlab}: ${(o.ftx || fx)(rows[0].se.kind === 'dots' ? rows[0].x : snapX)}</b>` + rows.map(r => `<div class="row"><i style="background:${col(r.se.c)}"></i>${r.se.name}<span class="val">${(r.se.fy || o.fty || fy)(r.y)}</span></div>`).join('');
+    }
+    hov.innerHTML = g; tip.innerHTML = html; tip.style.display = 'block';
+    const rc = el.getBoundingClientRect();
+    let lx = e.clientX - rc.left + 14, ly = e.clientY - rc.top + 12;
+    if (lx + tip.offsetWidth > rc.width) lx = e.clientX - rc.left - tip.offsetWidth - 14;
+    if (ly + tip.offsetHeight > rc.height) ly = e.clientY - rc.top - tip.offsetHeight - 10;
+    tip.style.left = Math.max(0, lx) + 'px'; tip.style.top = Math.max(0, ly) + 'px';
+  };
+  const hide = () => { hov.innerHTML = ''; tip.style.display = 'none'; };
+  const ov = svg.querySelector('.ov');
+  ov.addEventListener('pointermove', move); ov.addEventListener('pointerleave', hide);
+}
+
+/* =====================================================================
+   Small DOM helpers
+   ===================================================================== */
+const $ = (q, r = document) => r.querySelector(q);
+function prnSelect(sel, def, filter) {
+  const s = typeof sel === 'string' ? $(sel) : sel;
+  s.innerHTML = Array.from({ length: 32 }, (_, i) => i + 1).filter(p => !filter || filter(p)).map(p => `<option value="${p}"${p === def ? ' selected' : ''}>PRN ${p}</option>`).join('');
+  return s;
+}
+function slider(id, fmtFn, cb) {
+  const el = $('#' + id), out = $('#' + id + '-o');
+  const upd = () => { if (out) out.textContent = fmtFn(+el.value); cb(+el.value); };
+  el.addEventListener('input', upd); return upd;
+}
+function seg(id, cb) {
+  const el = $('#' + id);
+  el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+    el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); cb(b.dataset.v); });
+  return () => el.querySelector('button.on').dataset.v;
+}
+const statHTML = arr => arr.map(([v, l]) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+const themeHooks = [];
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* =====================================================================
+   Slide initialisers
+   ===================================================================== */
+const INIT = {};
+
+INIT.title = () => {
+  const R = circCorr(ca(1), ca(1)); const x = [], y = [];
+  for (let t = -511; t <= 511; t++) { x.push(t); y.push(R[(t + NCHIP) % NCHIP] / NCHIP); }
+  plot($('#title-plot'), { h: 260, xd: [-511, 511], yd: [-0.12, 1.05], series: [{ name: 'R(τ)', kind: 'stem', x, y, c: 's1', sw: 1 }],
+    xl: 'lag τ (chips)', xname: 'τ', fy: v => fmt(v, 4) });
+};
+
+INIT.problem = () => {
+  const f = range(-3, 3, 601), C = -128.5, Tc = 1 / FCHIP;
+  const sig = f.map(v => C + dB(Tc) + dB(sinc(Math.PI * v * 1e6 * Tc) ** 2 + 1e-12));
+  plot($('#problem-plot'), {
+    xd: [-3, 3], yd: [-215, -165], xl: 'frequency offset from 1575.42 MHz (MHz)', yl: 'dBm/Hz', xname: 'f',
+    fx: v => fmt(v, 2) + ' MHz', fy: v => fmt(v, 1),
+    series: [
+      { name: 'Thermal noise N₀ = kT', x: [-3, 3], y: [-174, -174], c: 's2' },
+      { name: 'GPS C/A signal PSD', x: f, y: sig, c: 's1' },
+      { kind: 'area', x: f, y: sig, c: 's1', base: -215, op: .15 }
+    ],
+    anno: [{ type: 'band', x0: -1, x1: 1, fill: 'var(--tint)' }, { type: 'text', x: -0.95, y: -168, label: '2 MHz receiver band' },
+      { type: 'pt', x: 0, y: C + dB(Tc), c: 's1', label: '−188.6 dBm/Hz', dy: -10 }]
+  });
+};
+
+function drawRoles() {
+  const sats = [[3, 70], [7, 240], [19, 400], [24, 570]];
+  let g = '';
+  for (const [p, x] of sats) {
+    const acc = p === 7;
+    g += `<g><rect x="${x - 11}" y="24" width="22" height="16" rx="3" class="d-box${acc ? ' acc' : ''}"/>
+      <rect x="${x - 40}" y="28" width="24" height="8" class="d-box"/><rect x="${x + 16}" y="28" width="24" height="8" class="d-box"/>
+      <text x="${x}" y="62" text-anchor="middle" class="d-sub">PRN ${p}</text>
+      <line x1="${x}" y1="68" x2="${320 + (x - 320) * 0.06}" y2="124" class="d-line${acc ? ' acc' : ''}" stroke-dasharray="${acc ? '' : '4 3'}"/></g>`;
+  }
+  $('#sats').innerHTML = g;
+  let b = '';
+  sats.forEach(([p, ], i) => {
+    const x = 20 + i * 155, acc = p === 7;
+    b += `<line x1="320" y1="216" x2="${x + 65}" y2="262" class="d-line" marker-end="url(#ar1)"/>
+      <rect x="${x}" y="264" width="130" height="40" rx="6" class="d-box${acc ? ' acc' : ''}"/>
+      <text x="${x + 65}" y="289" text-anchor="middle" class="d-text">⊗ c${String(p).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join('')}(t) → ∫</text>
+      <line x1="${x + 65}" y1="304" x2="${x + 65}" y2="326" class="d-line" marker-end="url(#ar1)"/>`;
+    // little correlation glyph: peak
+    const gx = x + 15, gy = 400;
+    b += `<path d="M${gx},${gy} L${gx + 40},${gy} L${gx + 50},${gy - 52} L${gx + 60},${gy} L${gx + 100},${gy}" class="d-line${acc ? ' acc' : ''}"/>
+      <text x="${x + 65}" y="${gy + 20}" text-anchor="middle" class="d-sub">${acc ? 'its own peak' : 'peak at its own τ'}</text>`;
+  });
+  b += `<text x="320" y="345" text-anchor="middle" class="d-sub">each correlator output vs. replica delay</text>`;
+  $('#corrbank').innerHTML = b;
+}
+
+INIT.bpsk = () => {
+  const n = 12, spc = 80, code = ca(1);
+  const t = range(0, n, n * spc + 1);
+  const D = t.map(v => v < 6 ? 1 : -1);
+  const C = t.map(v => code[Math.min(n - 1, Math.floor(v))]);
+  const CD = t.map((v, i) => C[i] * D[i]);
+  const S = t.map((v, i) => CD[i] * Math.cos(2 * Math.PI * 2 * v));
+  const flips = []; for (let k = 1; k < n; k++) { const a = code[k - 1] * (k - 1 < 6 ? 1 : -1), b = code[k] * (k < 6 ? 1 : -1); if (a !== b) flips.push(k); }
+  const host = $('#bpsk-plot'); host.innerHTML = '';
+  const rows = [['D(t)  data', D, 's2'], ['C(t)  code', C, 's1'], ['C·D', CD, 's7'], ['BPSK s(t)', S, 's3']];
+  rows.forEach(([name, y, c], i) => {
+    const d = document.createElement('div'); host.appendChild(d);
+    plot(d, { h: i === 3 ? 140 : 108, m: { l: 74, b: i === 3 ? 36 : 14, t: 8 }, xd: [0, n], yd: [-1.4, 1.4], yticks: [-1, 1],
+      fxt: v => i === 3 ? fmt(v, 0) : '', xticks: range(0, n, n + 1), xl: i === 3 ? 'time (chips)' : '', xname: 't', fx: v => fmt(v, 2) + ' chips',
+      series: [{ name, x: t, y, c, sw: i === 3 ? 1.6 : 2 }],
+      anno: (i >= 1 ? flips.map(k => ({ type: 'vline', x: k, dash: '2 3', c: i === 3 ? 's8' : undefined })) : [{ type: 'vline', x: 6, label: 'bit edge' }])
+        .concat([{ type: 'text', x: 0.1, y: 1.2, label: name }]) });
+  });
+};
+
+INIT.lfsr = () => {
+  const svg = $('#lfsr-svg'), sel = prnSelect('#lfsr-prn', 1);
+  let g1, g2, n, outBits;
+  const reset = () => { g1 = new Uint8Array(11).fill(1); g2 = new Uint8Array(11).fill(1); n = 0; outBits = []; render(); };
+  const cw = 44, x0 = 150, y1 = 26, y2 = 176, ch = 40;
+  const cx = i => x0 + (i - 1) * cw + cw / 2;
+  function render() {
+    const [a, b] = G2_TAPS[+sel.value - 1];
+    let s = `<defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="d-arrow"/></marker>
+      <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" style="fill:var(--s1)"/></marker></defs>`;
+    const reg = (y, st, taps, label, sel2) => {
+      let r = `<text x="20" y="${y + 26}" class="d-mono">${label}</text>`;
+      for (let i = 1; i <= 10; i++) {
+        const hi = sel2 && sel2.includes(i);
+        r += `<rect x="${x0 + (i - 1) * cw}" y="${y}" width="${cw}" height="${ch}" class="d-box${hi ? ' acc' : ''}"/>
+          <text x="${cx(i)}" y="${y + 26}" text-anchor="middle" class="d-mono">${st[i]}</text>
+          <text x="${cx(i)}" y="${y - 5}" text-anchor="middle" class="d-sub">${i}</text>`;
+      }
+      const bus = y + ch + 24;
+      r += `<line x1="${x0 - 50}" y1="${bus}" x2="${cx(Math.max(...taps))}" y2="${bus}" class="d-line"/>`;
+      for (const t of taps) r += `<line x1="${cx(t)}" y1="${y + ch}" x2="${cx(t)}" y2="${bus}" class="d-line"/><circle cx="${cx(t)}" cy="${bus}" r="3" class="d-arrow"/>`;
+      r += `<circle cx="${x0 - 50}" cy="${bus}" r="11" class="d-xor"/><text x="${x0 - 50}" y="${bus + 5}" text-anchor="middle" class="d-text">⊕</text>
+        <polyline points="${x0 - 50},${bus - 11} ${x0 - 50},${y + ch / 2} ${x0 - 2},${y + ch / 2}" class="d-line" marker-end="url(#ar4)"/>
+        <text x="${x0 - 46}" y="${bus + 26}" class="d-sub">taps ${taps.join(',')}</text>`;
+      return r;
+    };
+    s += reg(y1, g1, [3, 10], 'G1', null);
+    s += reg(y2, g2, [2, 3, 6, 8, 9, 10], 'G2', [a, b]);
+    // phase selector
+    const pb = y2 - 30, xp = x0 + 10 * cw + 40, xf = xp + 70, yf = 95;
+    s += `<line x1="${cx(Math.min(a, b))}" y1="${pb}" x2="${xp - 11}" y2="${pb}" class="d-line acc"/>`;
+    for (const t of [a, b]) s += `<line x1="${cx(t)}" y1="${y2}" x2="${cx(t)}" y2="${pb}" class="d-line acc"/><circle cx="${cx(t)}" cy="${pb}" r="3" style="fill:var(--s1)"/>`;
+    s += `<circle cx="${xp}" cy="${pb}" r="11" class="d-xor" style="stroke:var(--s1)"/><text x="${xp}" y="${pb + 5}" text-anchor="middle" class="d-text">⊕</text>
+      <text x="${xp - 10}" y="${pb + 28}" class="d-sub" style="fill:var(--s1)">phase select (${a}, ${b})</text>
+      <polyline points="${xp + 11},${pb} ${xf},${pb} ${xf},${yf + 12}" class="d-line acc" marker-end="url(#ar5)"/>
+      <polyline points="${x0 + 10 * cw},${y1 + ch / 2} ${xf},${y1 + ch / 2} ${xf},${yf - 12}" class="d-line" marker-end="url(#ar4)"/>
+      <circle cx="${xf}" cy="${yf}" r="11" class="d-xor"/><text x="${xf}" y="${yf + 5}" text-anchor="middle" class="d-text">⊕</text>
+      <line x1="${xf + 11}" y1="${yf}" x2="${xf + 52}" y2="${yf}" class="d-line" marker-end="url(#ar4)"/>
+      <text x="${xf + 18}" y="${yf - 10}" class="d-sub">C/A chip</text>
+      <text x="${xf + 22}" y="${yf + 22}" class="d-mono" style="fill:var(--s1)">${n ? outBits[outBits.length - 1] : '·'}</text>`;
+    svg.innerHTML = s;
+    const nxt = g1[10] ^ g2[a] ^ g2[b];
+    const ref = caGen(+sel.value).bits;
+    const shown = outBits.slice(-60).join('');
+    let oct = ''; if (outBits.length >= 10) { let v = 0; for (let i = 0; i < 10; i++) v = v * 2 + outBits[i]; oct = ` · first 10 chips (octal) = <b>${v.toString(8)}</b>`; }
+    $('#lfsr-out').innerHTML = `Output so far${outBits.length > 60 ? ' (last 60)' : ''}: <b>${shown || '—'}</b><br>Next chip = G1[10] ⊕ G2[${a}] ⊕ G2[${b}] = ${g1[10]} ⊕ ${g2[a]} ⊕ ${g2[b]} = <b>${nxt}</b>${oct}`
+      + (outBits.length && outBits.every((v, i) => v === ref[i % NCHIP]) ? ' <span class="tag ok">matches reference</span>' : '');
+    $('#lfsr-n').textContent = `n = ${n}`;
+  }
+  function step() {
+    const [a, b] = G2_TAPS[+sel.value - 1];
+    outBits.push(g1[10] ^ g2[a] ^ g2[b]);
+    const f1 = g1[3] ^ g1[10], f2 = g2[2] ^ g2[3] ^ g2[6] ^ g2[8] ^ g2[9] ^ g2[10];
+    for (let k = 10; k > 1; k--) { g1[k] = g1[k - 1]; g2[k] = g2[k - 1]; }
+    g1[1] = f1; g2[1] = f2; n++;
+  }
+  $('#lfsr-step').onclick = () => { step(); render(); };
+  $('#lfsr-10').onclick = () => { for (let i = 0; i < 10; i++) step(); render(); };
+  $('#lfsr-reset').onclick = reset; sel.onchange = reset;
+  reset();
+};
+
+INIT.gold = () => {
+  const grid = $('#prn-grid'); let ok = 0;
+  let h = '';
+  for (let p = 1; p <= 32; p++) {
+    const c = caGen(p); if (c.octal === IS_OCT[p - 1] && c.delay === IS_DELAY[p - 1]) ok++;
+    h += `<div data-p="${p}"><span class="p">PRN ${p}</span><br><span class="m">(${c.taps.join(',')}) Δ=${c.delay}</span><br><span class="m">${c.octal}₈</span></div>`;
+  }
+  grid.innerHTML = h;
+  $('#gold-check').innerHTML = ok === 32
+    ? `<span class="tag ok">✓ self-check</span> The generator in this page reproduces all 32 first-10-chip octal values and G2 delays in IS-GPS-200 Table 3-Ia.`
+    : `<span class="tag no">check failed</span> ${ok}/32 PRNs match IS-GPS-200.`;
+  const pick = p => {
+    grid.querySelectorAll('div').forEach(d => d.classList.toggle('sel', +d.dataset.p === p));
+    const c = caGen(p); const ones = c.bits.reduce((a, b) => a + b, 0);
+    const first = Array.from(c.bits.slice(0, 30)).join('');
+    $('#prn-sel-info').innerHTML = `PRN ${p}: taps (${c.taps.join(', ')}), Δ = ${c.delay} chips. First 30 chips: <span class="mono">${first}…</span> (${ones} ones, ${NCHIP - ones} zeros per period).`;
+  };
+  grid.addEventListener('click', e => { const d = e.target.closest('[data-p]'); if (d) pick(+d.dataset.p); });
+  pick(1);
+};
+
+INIT.balance = () => {
+  const sel = prnSelect('#bal-prn', 1);
+  const draw = () => {
+    const p = +sel.value, c = ca(p), bits = caGen(p).bits;
+    const x = range(0, 63, 64), y = Array.from(c.slice(0, 64));
+    plot($('#bal-wave'), { h: 170, xd: [0, 64], yd: [-1.4, 1.4], yticks: [-1, 0, 1], xl: 'chip index n', xname: 'n', fx: v => fmt(v, 0),
+      series: [{ name: `PRN ${p}`, kind: 'step', x, y, c: 's1' }] });
+    // runs (cyclic)
+    const runs = {}; let start = 0; while (bits[start] === bits[(start + NCHIP - 1) % NCHIP]) start++;
+    let len = 1;
+    for (let i = 1; i <= NCHIP; i++) { const a = bits[(start + i - 1) % NCHIP], b = bits[(start + i) % NCHIP];
+      if (i < NCHIP && a === b) len++; else { runs[len] = (runs[len] || 0) + 1; len = 1; } }
+    const L = Math.max(...Object.keys(runs).map(Number));
+    const xs = range(1, L, L), ys = xs.map(l => runs[l] || 0);
+    const total = ys.reduce((a, b) => a + b, 0);
+    const ideal = xs.map(l => total / 2 ** l);
+    plot($('#bal-runs'), { h: 200, xd: [0.4, L + 0.6], yd: [0, Math.max(...ys, ...ideal) * 1.12], xticks: xs, xl: 'run length ℓ (chips)', xname: 'ℓ', fx: v => fmt(v, 0), fy: v => fmt(v, 1),
+      series: [{ name: 'measured runs', kind: 'bars', x: xs, y: ys, c: 's1' }, { name: 'ideal ≈ total / 2^ℓ', x: xs, y: ideal, c: 's2', dash: true }] });
+    const ones = bits.reduce((a, b) => a + b, 0), mean = c.reduce((a, b) => a + b, 0) / NCHIP;
+    $('#bal-stats').innerHTML = statHTML([[ones, 'ones (→ −1)'], [NCHIP - ones, 'zeros (→ +1)'], [fmt(mean * NCHIP, 0) + '/1023', 'mean of c[n]'], [total, 'runs per period']]);
+  };
+  sel.onchange = draw; draw();
+};
+
+INIT.acorr = () => {
+  const sel = prnSelect('#ac-prn', 1);
+  const draw = () => {
+    const p = +sel.value, R = circCorr(ca(p), ca(p));
+    const x = range(0, NCHIP - 1, NCHIP), y = Array.from(R, v => v / NCHIP);
+    plot($('#ac-plot'), { h: 280, xd: [-5, NCHIP + 5], yd: [-0.12, 1.06], xl: 'lag τ (chips)', yl: 'R(τ)', xname: 'τ', fx: v => fmt(v, 0), fy: v => fmt(v, 4),
+      series: [{ name: `R(τ), PRN ${p}`, kind: 'stem', x, y, c: 's1', sw: 1 }],
+      anno: [{ type: 'hline', y: 63 / 1023, label: '+63/1023', right: true }, { type: 'hline', y: -65 / 1023, label: '−65/1023', right: true, dash: '2 3' },
+        { type: 'pt', x: 0, y: 1, c: 's1', label: 'R(0) = 1' }] });
+    const zx = range(-20, 20, 41), zy = zx.map(t => R[(t + NCHIP) % NCHIP] / NCHIP);
+    plot($('#ac-zoom'), { h: 200, xd: [-20.5, 20.5], yd: [-0.12, 1.06], xl: 'lag τ (chips)', xname: 'τ', fx: v => fmt(v, 0), fy: v => fmt(v, 4),
+      series: [{ name: 'R(τ)', kind: 'stem', x: zx, y: zy, c: 's1', sw: 2 }, { name: 'tops', kind: 'dots', r: 3.5, x: zx, y: zy, c: 's1', hover: false, nolegend: true }] });
+    const cnt = {}; for (let t = 1; t < NCHIP; t++) cnt[R[t]] = (cnt[R[t]] || 0) + 1;
+    $('#ac-vals').innerHTML = `<b>Measured for PRN ${p}:</b> off-peak values ` + Object.keys(cnt).map(Number).sort((a, b) => a - b).map(k => `<span class="mono">${k}/1023</span> ×${cnt[k]}`).join(', ') + '.';
+  };
+  sel.onchange = draw; draw();
+};
+
+INIT.tri = () => {
+  // code sampled at 20 samples/chip over one period, band-limited via FFT (32768 pts > 20460)
+  const S = 20, N = 32768, code = ca(1);
+  const baseRe = new Float64Array(N), baseIm = new Float64Array(N);
+  for (let i = 0; i < N; i++) baseRe[i] = code[Math.floor(i * NCHIP / N) % NCHIP];
+  fft(baseRe, baseIm, false);
+  const spc = N / NCHIP; // samples per chip (≈32)
+  const draw = bw => {
+    // filter: keep |f| <= bw/2 MHz; sample rate = N / 1ms
+    const fs = N * 1000, re = Float64Array.from(baseRe), im = Float64Array.from(baseIm);
+    for (let k = 0; k < N; k++) { const f = (k <= N / 2 ? k : k - N) * fs / N; if (Math.abs(f) > bw * 1e6 / 2) { re[k] = 0; im[k] = 0; } }
+    // circular xcorr with unfiltered code via spectrum: corr = IFFT(Filt(C) * conj(C))
+    const r2 = new Float64Array(N), i2 = new Float64Array(N);
+    for (let k = 0; k < N; k++) { r2[k] = re[k] * baseRe[k] + im[k] * baseIm[k]; i2[k] = im[k] * baseRe[k] - re[k] * baseIm[k]; }
+    fft(r2, i2, true);
+    const xs = [], ys = [];
+    for (let s = -Math.round(2.5 * spc); s <= Math.round(2.5 * spc); s += 1) { xs.push(s / spc); ys.push(r2[(s + N) % N] / N); }
+    const xt = range(-2.5, 2.5, 201);
+    plot($('#tri-plot'), { h: 360, xd: [-2.5, 2.5], yd: [-0.15, 1.1], xl: 'delay τ (chips)   ·   1 chip = 293.05 m', yl: 'normalized correlation', xname: 'τ',
+      fx: v => fmt(v, 3) + ' ch (' + fmt(v * CHIP_M, 0) + ' m)', fy: v => fmt(v, 3),
+      series: [{ name: 'ideal 1 − |τ|/Tc', x: xt, y: xt.map(tri), c: 's2', dash: true }, { name: `sampled code, ${bw} MHz`, kind: 'dots', r: 3, x: xs, y: ys, c: 's1' }],
+      anno: [{ type: 'band', x0: -1, x1: 1 }, { type: 'text', x: -0.96, y: -0.08, label: '±1 chip = ±293 m' }] });
+  };
+  slider('tri-bw', v => v + ' MHz', draw)();
+};
+
+INIT.xcorr = () => {
+  const si = prnSelect('#xc-i', 1), sj = prnSelect('#xc-j', 2);
+  const draw = () => {
+    const i = +si.value, j = +sj.value, R = circCorr(ca(i), ca(j));
+    const x = range(0, NCHIP - 1, NCHIP), y = Array.from(R, v => v / NCHIP);
+    $('#xc-title').textContent = i === j ? `Autocorrelation (same PRN ${i})` : `Cross-correlation R(τ) between PRN ${i} and PRN ${j}`;
+    plot($('#xc-plot'), { h: 220, xd: [-5, NCHIP + 5], yd: i === j ? [-0.12, 1.06] : [-0.1, 0.1], xl: 'lag τ (chips)', xname: 'τ', fx: v => fmt(v, 0), fy: v => fmt(v, 4),
+      series: [{ name: `R${i},${j}(τ)`, kind: 'stem', x, y, c: 's2', sw: 1 }],
+      anno: [{ type: 'hline', y: 63 / 1023, label: '+63/1023', right: true }, { type: 'hline', y: -65 / 1023, label: '−65/1023', right: true }] });
+  };
+  si.onchange = draw; sj.onchange = draw; draw();
+  // histogram over all pairs via FFT
+  setTimeout(() => {
+    const N = 4096, F = [];
+    for (let p = 1; p <= 32; p++) { const re = new Float64Array(N), im = new Float64Array(N), re2 = new Float64Array(N), im2 = new Float64Array(N), c = ca(p);
+      for (let n = 0; n < NCHIP; n++) { re[n] = c[n]; re2[n] = c[n]; re2[n + NCHIP] = c[n]; }
+      fft(re, im, false); fft(re2, im2, false); F.push({ re, im, re2, im2 }); }
+    const cnt = {};
+    for (let a = 0; a < 32; a++) for (let b = a + 1; b < 32; b++) {
+      const A = F[a], B = F[b], r = new Float64Array(N), im = new Float64Array(N);
+      for (let k = 0; k < N; k++) { r[k] = A.re[k] * B.re2[k] + A.im[k] * B.im2[k]; im[k] = A.re[k] * B.im2[k] - A.im[k] * B.re2[k]; }
+      fft(r, im, true);
+      for (let t = 0; t < NCHIP; t++) { const v = Math.round(r[t]); cnt[v] = (cnt[v] || 0) + 1; }
+    }
+    const keys = Object.keys(cnt).map(Number).sort((a, b) => a - b), tot = keys.reduce((s, k) => s + cnt[k], 0);
+    plot($('#xc-hist'), { h: 200, xd: [-80, 80], yd: [0, 80], xticks: [-65, -1, 63], xl: 'cross-correlation value (×1/1023)', yl: '% of values', xname: 'value', fx: v => fmt(v, 0) + '/1023', fy: v => fmt(v, 2) + ' %',
+      series: [{ name: 'share of all values', kind: 'bars', bw: 16, x: keys, y: keys.map(k => 100 * cnt[k] / tot), c: 's2' }] });
+    $('#xc-hist-cap').innerHTML = `Exactly ${keys.length} distinct values occur: ` + keys.map(k => `<span class="mono">${k}</span> (${fmt(100 * cnt[k] / tot, 1)}%)`).join(', ') + ` of ${tot.toLocaleString('en-US')}. This matches Gold-code theory (≈ 50% / 25% / 25%).`;
+  }, 30);
+};
+
+INIT.spec = () => {
+  const N = 4096, fs = 4.096e6, c = ca(1), re = new Float64Array(N), im = new Float64Array(N);
+  for (let n = 0; n < N; n++) re[n] = c[Math.floor(n * FCHIP / fs) % NCHIP];
+  fft(re, im, false);
+  const fk = [], pk = [];
+  for (let k = -N / 2; k < N / 2; k++) { const i = (k + N) % N; fk.push(k * fs / N / 1e6); pk.push(dB((re[i] ** 2 + im[i] ** 2) / N / N + 1e-12)); }
+  const fe = range(-2.048, 2.048, 801), env = fe.map(f => dB(sinc(Math.PI * f * 1e6 / FCHIP) ** 2 / NCHIP + 1e-12));
+  plot($('#spec-wide'), { h: 230, xd: [-2.048, 2.048], yd: [-75, -25], base: -75, xl: 'frequency (MHz)', yl: 'dB', xname: 'f', fx: v => fmt(v * 1000, 0) + ' kHz', fy: v => fmt(v, 1) + ' dB',
+    series: [{ name: 'spectral lines |a_m|²', kind: 'stem', x: fk, y: pk, c: 's1', sw: .6, op: .8 }, { name: 'envelope (1/N)·sinc²(πfTc)', x: fe, y: env, c: 's2', sw: 2 }],
+    anno: [{ type: 'vline', x: -1.023, label: '−1.023' }, { type: 'vline', x: 1.023, label: '+1.023' }] });
+  const zx = [], zy = [];
+  for (let i = 0; i < fk.length; i++) if (Math.abs(fk[i]) <= 0.0125) { zx.push(fk[i] * 1000); zy.push(pk[i]); }
+  plot($('#spec-zoom'), { h: 200, xd: [-12.5, 12.5], yd: [-75, -20], base: -75, xticks: range(-12, 12, 13), xl: 'frequency (kHz)', yl: 'dB', xname: 'f', fx: v => fmt(v, 0) + ' kHz', fy: v => fmt(v, 1) + ' dB',
+    series: [{ name: 'line power', kind: 'stem', x: zx, y: zy, c: 's1', sw: 2.5 }, { name: 'line tops', kind: 'dots', r: 3.5, x: zx, y: zy, c: 's1', hover: false, nolegend: true }],
+    anno: [{ type: 'hline', y: -30.1, label: '−30.1 dB = 1/1023', right: true }, { type: 'text', x: 0.6, y: -62, label: 'DC line ≈ −60 dB (balance)' }] });
+};
+
+INIT.spread = () => {
+  const L = 32, B = 6, code = ca(1);
+  let seed = 7;
+  const bits = [1, -1, -1, 1, -1, 1];
+  const draw = () => {
+    const sigma = +$('#sp-sig').value, g = gaussFn(rng(seed));
+    const n = L * B, x = range(0, n - 1, n);
+    const d = x.map(i => bits[Math.floor(i / L)]), c = x.map(i => code[i]);
+    const tx = x.map((_, i) => d[i] * c[i]), rx = tx.map(v => v + sigma * g());
+    const ds = rx.map((v, i) => v * c[i]);
+    const zb = bits.map((_, b) => { let s = 0; for (let i = b * L; i < (b + 1) * L; i++) s += ds[i]; return s; });
+    const host = $('#sp-plot'); host.innerHTML = '';
+    const yr = Math.max(1.5, 1 + 3 * sigma);
+    const rows = [
+      ['1 · data d', [{ name: 'd[n]', kind: 'step', x, y: d, c: 's2' }], [-1.6, 1.6]],
+      ['2 · code c', [{ name: 'c[n]', kind: 'step', x, y: c, c: 's1', sw: 1.2 }], [-1.6, 1.6]],
+      ['3 · transmitted d·c', [{ name: 'd·c', kind: 'step', x, y: tx, c: 's7', sw: 1.2 }], [-1.6, 1.6]],
+      ['4 · received d·c + w', [{ name: 'r[n]', kind: 'step', x, y: rx, c: 's3', sw: 1 }], [-yr, yr]],
+      ['5 · despread & dump Σ c·r', [{ name: 'z_m', kind: 'step', dx: L, x: bits.map((_, b) => b * L), y: zb, c: 's1', sw: 3 }, { name: 'L·d', kind: 'step', dx: L, x: bits.map((_, b) => b * L), y: bits.map(b => b * L), c: 's2', dash: '4 3', sw: 1.4 }], [-L * 1.8, L * 1.8]]
+    ];
+    rows.forEach(([lab, ser, yd], i) => {
+      const el = document.createElement('div'); host.appendChild(el);
+      plot(el, { h: i === 4 ? 130 : 92, m: { l: 50, b: i === 4 ? 34 : 8, t: 6 }, xd: [0, n], yd, ny: 2, yticks: i === 4 ? [-L, 0, L] : (i === 3 ? undefined : [-1, 1]),
+        xticks: range(0, n, B + 1), fxt: v => i === 4 ? fmt(v, 0) : '', xl: i === 4 ? 'chip index' : '', xname: 'n', fx: v => fmt(v, 0), fy: v => fmt(v, 2),
+        series: ser, anno: [{ type: 'text', x: 1, y: yd[1] * 0.78, label: lab }].concat(bits.map((_, b) => ({ type: 'vline', x: b * L, dash: '1 4' }))) });
+    });
+    const dec = zb.map(v => Math.sign(v)), err = dec.filter((v, i) => v !== bits[i]).length;
+    const snrChip = sigma > 0 ? dB(1 / sigma ** 2) : Infinity, snrOut = snrChip + dB(L);
+    $('#sp-res').innerHTML = `Per-chip SNR = <b>${sigma > 0 ? fmt(snrChip, 1) + ' dB' : '∞'}</b> → after summing L = ${L} chips: <b>${sigma > 0 ? fmt(snrOut, 1) + ' dB' : '∞'}</b> (+${fmt(dB(L), 1)} dB). Bit errors: <b>${err}/${B}</b> ${err ? '<span class="tag no">errors</span>' : '<span class="tag ok">all bits recovered</span>'}`;
+  };
+  slider('sp-sig', v => fmt(v, 1), draw)();
+  $('#sp-new').onclick = () => { seed++; draw(); };
+};
+
+INIT.jam = () => {
+  const f = range(-3, 3, 1201), Tc = 1 / FCHIP, cn0 = 45, vis = 0.025;
+  const gpk = (peak, w) => f.map(v => peak + dB(Math.exp(-0.5 * (v / (w / 2.355)) ** 2) + 1e-30));
+  const sincDB = (pdbhz) => f.map(v => pdbhz + dB(sinc(Math.PI * v * 1e6 * Tc) ** 2 + 1e-12));
+  const pw = (a, b) => a.map((v, i) => dB(10 ** (v / 10) + 10 ** (b[i] / 10)));
+  const draw = js => {
+    const jn0 = cn0 + js; // dB-Hz
+    const noise = f.map(() => 0);
+    const sigB = sincDB(cn0 + dB(Tc));                     // spread signal PSD
+    const jamB = gpk(jn0 - dB(1000), vis);                 // CW line (shown ~25 kHz wide), true density over ~1 kHz
+    const sigA = gpk(cn0 - dB(50), vis);                   // collapsed to data bandwidth
+    const jamA = sincDB(jn0 + dB(Tc));                     // spread jammer
+    const common = { h: 210, xd: [-3, 3], yd: [-30, 80], xl: 'frequency offset (MHz)', yl: 'dB re N₀', xname: 'f', fx: v => fmt(v, 3) + ' MHz', fy: v => fmt(v, 1) + ' dB', m: { l: 52 } };
+    plot($('#jam-before'), Object.assign({}, common, { series: [
+      { name: 'noise N₀', x: [-3, 3], y: [0, 0], c: 's7', sw: 1.5 },
+      { name: 'GPS signal (spread)', x: f, y: sigB, c: 's1' },
+      { name: `CW interferer (J/S = ${js} dB)`, x: f, y: jamB, c: 's2' }] }));
+    plot($('#jam-after'), Object.assign({}, common, { series: [
+      { name: 'noise (still white)', x: [-3, 3], y: [0, 0], c: 's7', sw: 1.5 },
+      { name: 'GPS signal (despread)', x: f, y: sigA, c: 's1' },
+      { name: 'interferer (now spread)', x: f, y: jamA, c: 's2' }],
+      anno: [{ type: 'band', x0: -0.06, x1: 0.06 }, { type: 'text', x: 0.1, y: 70, label: `in 50 Hz: S/J = ${fmt(43.1 - js, 1)} dB` }] }));
+  };
+  slider('jam-js', v => '+' + v + ' dB', draw)();
+};
+
+INIT.raw = () => {
+  const fs = 4.096e6, A = Math.sqrt(10 ** 4.5 / fs), g = gaussFn(rng(11)), c = ca(7), fd = 2250;
+  const n = 300, x = range(0, n - 1, n), sig = [], rx = [];
+  for (let i = 0; i < n; i++) { const t = i / fs, s = A * c[Math.floor(t * FCHIP) % NCHIP] * Math.cos(2 * Math.PI * fd * t + 0.7); sig.push(s); rx.push(s + g() * Math.SQRT1_2); }
+  plot($('#raw-plot'), { h: 330, xd: [0, n - 1], yd: [-2.6, 2.6], xl: 'sample index n (Tₛ = 244 ns)', yl: 'amplitude (σ_w = 1 complex)', xname: 'n', fx: v => fmt(v, 0), fy: v => fmt(v, 3),
+    series: [{ name: 'received r[n]', x, y: rx, c: 's1', sw: 1 }, { name: 'signal component only', x, y: sig, c: 's2', sw: 2.2 }] });
+};
+
+function drawGrid() {
+  const svg = $('#grid-svg'); const cols = 32, rows = 9, x0 = 70, y0 = 14, w = 17, h = 16;
+  let s = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const hit = r === 5 && c === 13, near = (Math.abs(r - 5) <= 1 && Math.abs(c - 13) <= 1) && !hit;
+    s += `<rect x="${x0 + c * w}" y="${y0 + r * h}" width="${w - 2}" height="${h - 2}" rx="2" style="fill:${hit ? 'var(--s1)' : near ? 'var(--tint)' : 'var(--surface-2)'};stroke:${near ? 'var(--s1)' : 'none'}"/>`;
+  }
+  s += `<text x="${x0 + cols * w / 2}" y="${y0 + rows * h + 18}" text-anchor="middle" class="d-sub">code phase τ → 2046 half-chip cells (32 shown)</text>
+    <text x="${x0 - 10}" y="${y0 + rows * h / 2}" text-anchor="end" class="d-sub">Doppler f ↕</text>
+    <text x="${x0 - 10}" y="${y0 + rows * h / 2 + 14}" text-anchor="end" class="d-sub">41 bins</text>
+    <text x="${x0 + 14 * w + 6}" y="${y0 + 5 * h + 11}" class="d-sub" style="fill:var(--ink)">← S(τ,f) &gt; V_t</text>`;
+  svg.innerHTML = s;
+}
+
+INIT.acq = () => {
+  const FS = 4.096e6, NS = 4096, DOPS = range(-10000, 10000, 41);
+  const SATS = [{ prn: 7, dop: 2250, code: 412.3, cn0: 45, ph: 0.7 }, { prn: 19, dop: -3125, code: 830.6, cn0: 42, ph: 2.1 }, { prn: 24, dop: 1000, code: 150.2, cn0: 39, ph: 4.0 }];
+  $('#acq-truth').innerHTML = `<tr><th>PRN</th><th class="num">code phase</th><th class="num">Doppler</th><th class="num">C/N₀</th></tr>` +
+    SATS.map(s => `<tr><td>${s.prn}</td><td class="num">${s.code} ch</td><td class="num">${s.dop > 0 ? '+' : ''}${s.dop} Hz</td><td class="num" data-cn="${s.cn0}">${s.cn0} dB-Hz</td></tr>`).join('');
+  const sel = prnSelect('#acq-prn', 7);
+  const codeFFT = {};
+  const getCodeFFT = p => { if (codeFFT[p]) return codeFFT[p]; const re = new Float64Array(NS), im = new Float64Array(NS), c = ca(p);
+    for (let n = 0; n < NS; n++) re[n] = c[Math.floor(n * FCHIP / FS) % NCHIP]; fft(re, im, false); return (codeFFT[p] = { re, im }); };
+  let rxCache = {};
+  const getRx = (K, off) => {
+    const key = K + ':' + off; if (rxCache[key]) return rxCache[key];
+    const N = K * NS, re = new Float64Array(N), im = new Float64Array(N), g = gaussFn(rng(1234));
+    for (let n = 0; n < N; n++) { re[n] = g() * Math.SQRT1_2; im[n] = g() * Math.SQRT1_2; }
+    for (const s of SATS) {
+      const A = Math.sqrt(10 ** ((s.cn0 + off) / 10) / FS), c = ca(s.prn), fc = FCHIP * (1 + s.dop / FL1);
+      for (let n = 0; n < N; n++) { const t = n / FS; let ci = Math.floor(t * fc - s.code) % NCHIP; if (ci < 0) ci += NCHIP;
+        const ph = 2 * Math.PI * s.dop * t + s.ph, a = A * c[ci]; re[n] += a * Math.cos(ph); im[n] += a * Math.sin(ph); }
+    }
+    rxCache = { [key]: { re, im } }; return rxCache[key];
+  };
+  let last = null;
+  const view = seg('acq-view', () => last && render(last));
+  function compute() {
+    const p = +sel.value, K = +$('#acq-k').value, off = +$('#acq-off').value;
+    const rx = getRx(K, off), cf = getCodeFFT(p), map = new Float32Array(DOPS.length * NS);
+    const br = new Float64Array(NS), bi = new Float64Array(NS);
+    DOPS.forEach((fd, r) => {
+      const row = r * NS;
+      for (let k = 0; k < K; k++) {
+        for (let n = 0; n < NS; n++) { const gi = k * NS + n, ph = -2 * Math.PI * fd * gi / FS, cs = Math.cos(ph), sn = Math.sin(ph);
+          br[n] = rx.re[gi] * cs - rx.im[gi] * sn; bi[n] = rx.re[gi] * sn + rx.im[gi] * cs; }
+        fft(br, bi, false);
+        for (let n = 0; n < NS; n++) { const a = br[n], b = bi[n], c = cf.re[n], d = cf.im[n]; br[n] = a * c + b * d; bi[n] = b * c - a * d; }
+        fft(br, bi, true);
+        for (let n = 0; n < NS; n++) map[row + n] += br[n] * br[n] + bi[n] * bi[n];
+      }
+      for (let n = 0; n < NS; n++) map[row + n] /= NS; // noise mean per block = 1
+    });
+    let pk = 0, pi = 0; for (let i = 0; i < map.length; i++) if (map[i] > pk) { pk = map[i]; pi = i; }
+    const pr = Math.floor(pi / NS), pc = pi % NS;
+    let sec = 0; for (let r = 0; r < DOPS.length; r++) for (let n = 0; n < NS; n++) {
+      let dd = Math.abs(n - pc); dd = Math.min(dd, NS - dd); if (dd > 8) sec = Math.max(sec, map[r * NS + n]); }
+    const vt = gammaThresh(K, 1e-3 / map.length);
+    return { p, K, off, map, pk, pr, pc, sec, vt };
+  }
+  function render(res) {
+    const { p, K, map, pk, pr, pc, sec, vt } = res;
+    const det = pk > vt, codePh = pc * FCHIP / FS, dop = DOPS[pr];
+    $('#acq-title').innerHTML = `PRN ${p}: correlation power over ${DOPS.length} Doppler bins × ${NS} code-phase samples, K = ${K}`;
+    const host = $('#acq-map');
+    if (view() === 'heat') {
+      const cv = document.createElement('canvas'), W = 1024, Hh = DOPS.length; cv.width = W; cv.height = Hh;
+      const ctx = cv.getContext('2d'), img = ctx.createImageData(W, Hh);
+      const dark = cssVar('--surface') === '#1a1a19';
+      const stops = dark ? [[26, 26, 25], [16, 66, 129], [42, 120, 214], [134, 182, 239], [222, 236, 252]] : [[252, 252, 251], [183, 211, 246], [85, 152, 231], [37, 106, 191], [13, 54, 107]];
+      const cmap = v => { const t = Math.max(0, Math.min(1, v)) * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(t)), f = t - i;
+        return stops[i].map((a, j) => a + (stops[i + 1][j] - a) * f); };
+      const ref = Math.max(pk, vt * 1.2);
+      for (let r = 0; r < Hh; r++) for (let x = 0; x < W; x++) {
+        let mx = 0; const row = (DOPS.length - 1 - r) * NS; for (let k = -12; k < 16; k++) mx = Math.max(mx, map[row + ((x * 4 + k + NS) % NS)]);
+        const c = cmap(mx / ref), o = (r * W + x) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      plot(host, { h: 300, xd: [0, NCHIP], yd: [-10.25, 10.25], image: { href: cv.toDataURL(), x0: 0, x1: NCHIP, y0: -10.25, y1: 10.25 },
+        xl: 'code phase (chips)', yl: 'Doppler (kHz)', fy: v => fmt(v, 0), fx: v => fmt(v, 0),
+        hover2d: (xv, yv) => { const r = Math.round((yv + 10) * 2); if (r < 0 || r >= DOPS.length || xv < 0 || xv >= NCHIP) return null;
+          const n = Math.min(NS - 1, Math.round(xv * FS / FCHIP)); return `<b>τ ${fmt(xv, 1)} ch · f ${fmt(DOPS[r], 0)} Hz</b><div class="row">S/σ²<span class="val">${fmt(map[r * NS + n], 1)}</span></div>`; },
+        raw: det ? ({ sx, sy }) => `<circle cx="${sx(codePh)}" cy="${sy(dop / 1000)}" r="11" fill="none" stroke="var(--s2)" stroke-width="2.5"/>` : null,
+        anno: det ? [{ type: 'text', x: codePh + (codePh > 650 ? -25 : 25), y: dop / 1000 + 1.3, anchor: codePh > 650 ? 'end' : 'start', label: `peak: ${fmt(codePh, 1)} chips, ${dop > 0 ? '+' : ''}${dop} Hz` }] : [] });
+    } else {
+      // ridge / waterfall
+      const W = 640, H = 330, nb = DOPS.length, skx = 3.2, sky = 4.6, pw = 470, ph = 150, oxB = 40, oyB = 38;
+      const scale = ph / Math.max(pk, vt);
+      let s = `<svg viewBox="0 0 ${W} ${H}">`;
+      for (let r = nb - 1; r >= 0; r--) {
+        const ox = oxB + (nb - 1 - r) * skx * 0 + r * 0 + (nb - 1 - r) * skx, oy = oyB + ph + (nb - 1 - r) * sky;
+        let d = `M${ox},${oy}`;
+        for (let x = 0; x < 512; x++) { let mx = 0; for (let k = 0; k < 8; k++) mx = Math.max(mx, map[r * NS + x * 8 + k]); d += `L${(ox + x / 511 * pw).toFixed(1)},${(oy - mx * scale).toFixed(1)}`; }
+        d += `L${ox + pw},${oy}Z`;
+        const isPk = r === pr && det;
+        s += `<path d="${d}" style="fill:var(--surface);stroke:${isPk ? 'var(--s2)' : 'var(--ink-3)'};stroke-width:${isPk ? 1.8 : 0.6}"/>`;
+      }
+      const fx0 = oxB + (nb - 1) * skx, fy0 = oyB + ph + (nb - 1) * sky;
+      s += `<line x1="${fx0}" y1="${fy0 + 6}" x2="${fx0 + pw}" y2="${fy0 + 6}" class="axis"/>`;
+      for (const v of [0, 256, 512, 768, 1023]) s += `<text class="tick" x="${fx0 + v / NCHIP * pw}" y="${fy0 + 20}" text-anchor="middle">${v}</text>`;
+      s += `<text class="alabel" x="${fx0 + pw / 2}" y="${fy0 + 38}" text-anchor="middle">code phase (chips)</text>`;
+      s += `<line x1="${fx0 + pw + 6}" y1="${fy0}" x2="${oxB + pw + 6}" y2="${oyB + ph}" class="axis"/>
+        <text class="tick" x="${fx0 + pw + 12}" y="${fy0 + 4}">−10 kHz</text><text class="tick" x="${oxB + pw + 12}" y="${oyB + ph + 4}">+10 kHz</text>
+        <text class="alabel" x="${(fx0 + oxB) / 2 + pw + 30}" y="${(fy0 + oyB + ph) / 2}">Doppler</text></svg>`;
+      host.innerHTML = s; host.classList.add('plot');
+    }
+    const cx = range(0, NS - 1, NS).map(n => n * FCHIP / FS), cy = Array.from(map.slice(pr * NS, pr * NS + NS));
+    plot($('#acq-code'), { w: 380, h: 240, m: { l: 40 }, xd: [0, NCHIP], yd: [0, Math.max(pk, vt) * 1.1], nx: 4, xl: 'code phase (chips)', xname: 'τ', fx: v => fmt(v, 1) + ' ch', fy: v => fmt(v, 1),
+      series: [{ name: `S at ${dop} Hz`, x: cx, y: cy, c: 's1', sw: 1 }], anno: [{ type: 'hline', y: vt, label: 'threshold', c: 's2', right: true }] });
+    const dy = DOPS.map((_, r) => map[r * NS + pc]);
+    plot($('#acq-dop'), { w: 380, h: 240, m: { l: 40 }, xd: [-10, 10], yd: [0, Math.max(pk, vt) * 1.1], nx: 4, xl: 'Doppler (kHz)', xname: 'f', fx: v => fmt(v, 1) + ' kHz', fy: v => fmt(v, 1),
+      series: [{ name: `S at ${fmt(codePh, 1)} chips`, x: DOPS.map(v => v / 1000), y: dy, c: 's1' }, { name: 'bins', kind: 'dots', r: 3, x: DOPS.map(v => v / 1000), y: dy, c: 's1', hover: false, nolegend: true }],
+      anno: [{ type: 'hline', y: vt, c: 's2' }] });
+    $('#acq-stats').innerHTML = statHTML([
+      [det ? '<span class="tag ok">ACQUIRED</span>' : '<span class="tag no">NOT FOUND</span>', 'decision (peak vs V_t)'],
+      [fmt(pk, 1), `peak / σ² (V_t = ${fmt(vt, 1)})`],
+      [fmt(pk / Math.max(sec, 1e-9), 2), 'peak / 2nd peak'],
+      [det ? fmt(codePh, 1) + ' ch' : '—', 'code phase'],
+      [det ? (dop > 0 ? '+' : '') + dop + ' Hz' : '—', 'Doppler bin']]);
+    document.querySelectorAll('#acq-truth td[data-cn]').forEach(td => td.textContent = (+td.dataset.cn + res.off) + ' dB-Hz');
+  }
+  const run = () => { $('#acq-stats').innerHTML = statHTML([['…', 'computing']]); setTimeout(() => { last = compute(); render(last); }, 20); };
+  const k = $('#acq-k'), off = $('#acq-off');
+  const ko = () => $('#acq-k-o').textContent = k.value + ' ms', oo = () => $('#acq-off-o').textContent = (off.value > 0 ? '+' : '') + off.value + ' dB';
+  k.addEventListener('input', ko); off.addEventListener('input', oo); ko(); oo();
+  k.addEventListener('change', run); off.addEventListener('change', run); sel.onchange = run;
+  themeHooks.push(() => last && render(last));
+  run();
+};
+
+
+INIT.corrdemo = () => {
+  const c = ca(1), D = 12, W = 40;
+  const draw = () => {
+    const k = +$('#cd-k').value, sig = +$('#cd-s').value, g = gaussFn(rng(21));
+    const r = new Float64Array(NCHIP); for (let n = 0; n < NCHIP; n++) r[n] = c[(n - D + NCHIP) % NCHIP] + sig * g();
+    const corr = kk => { let s = 0; for (let n = 0; n < NCHIP; n++) s += r[n] * c[(n - kk + NCHIP) % NCHIP]; return s; };
+    const x = range(0, W - 1, W), rep_ = x.map(n => c[(n - k + NCHIP) % NCHIP]), rx = x.map(n => r[n]), pr = x.map((n, i) => rx[i] * rep_[i]);
+    const host = $('#cd-rows'); host.innerHTML = '';
+    const yr = Math.max(1.6, 1 + 2.5 * sig);
+    const rows = [['received r[n] (true delay = 12)', [{ name: 'r[n]', kind: 'step', x, y: rx, c: 's3', sw: 1.5 }], [-yr, yr]],
+      [`replica c[n − ${k}]`, [{ name: 'replica', kind: 'step', x, y: rep_, c: 's1', sw: 1.5 }], [-1.6, 1.6]],
+      ['product r·replica', [{ name: 'product > 0', kind: 'bars', bw: 1, x: x.filter((_, i) => pr[i] >= 0).map(v => v + .5), y: pr.filter(v => v >= 0), c: 's1' },
+        { name: 'product < 0', kind: 'bars', bw: 1, x: x.filter((_, i) => pr[i] < 0).map(v => v + .5), y: pr.filter(v => v < 0), c: 's2' }], [-yr * 1.1, yr * 1.1]]];
+    rows.forEach(([lab, ser, yd], i) => {
+      const el = document.createElement('div'); host.appendChild(el);
+      plot(el, { h: i === 2 ? 150 : 104, m: { l: 44, b: i === 2 ? 34 : 8, t: 6 }, xd: [0, W], yd, yticks: [-1, 0, 1], xticks: range(0, W, 9), fxt: v => i === 2 ? fmt(v, 0) : '',
+        xl: i === 2 ? 'chip index n' : '', xname: 'n', fx: v => fmt(v, 0), fy: v => fmt(v, 2), series: ser, legend: false,
+        anno: [{ type: 'text', x: 0.5, y: yd[1] * 0.75, label: lab }] });
+    });
+    const ks = range(0, 40, 41), vals = ks.map(corr);
+    plot($('#cd-sum'), { h: 220, xd: [-0.5, 40.5], yd: [Math.min(-150, ...vals) * 1.1, 1150], xl: 'replica shift k (chips)', yl: 'sum', xname: 'k', fx: v => fmt(v, 0), fy: v => fmt(v, 0),
+      series: [{ name: 'corr(k)', kind: 'stem', x: ks, y: vals, c: 's1', sw: 2 }, { name: 'corr tops', kind: 'dots', r: 3.5, x: ks, y: vals, c: 's1', hover: false, nolegend: true }],
+      anno: [{ type: 'pt', x: k, y: vals[k], c: 's2', r: 7, label: `your k = ${k}` }, { type: 'hline', y: 0, dash: '1 0', sw: .6 }] });
+    const pos = pr.filter(v => v > 0).length;
+    $('#cd-stats').innerHTML = statHTML([[`${pos}/${W}`, 'positive products (shown)'], [fmt(vals[k], 0), 'sum over 1023 chips'], [fmt(vals[k] / NCHIP, 3), 'normalized R(k)']]);
+  };
+  slider('cd-k', v => 'k = ' + v, draw); slider('cd-s', v => fmt(v, 1), draw)();
+  $('#cd-k-o').textContent = 'k = ' + $('#cd-k').value;
+};
+
+INIT.pgain = () => {
+  const draw = () => {
+    const cn0 = +$('#pg-cn0').value, N = Math.max(1, Math.round(10 ** +$('#pg-n').value));
+    const st = [['per sample (4.096 MHz)', cn0 - dB(4.096e6)], ['2 MHz front-end', cn0 - dB(2e6)], ['per chip (1.023 MHz)', cn0 - dB(FCHIP)],
+      ['after 1 ms (1023 chips)', cn0 - 30], ['after 20 ms (1 bit)', cn0 - dB(50)]];
+    const xs = st.map((_, i) => i + 1), ys = st.map(v => v[1]);
+    plot($('#pg-bars'), { h: 250, xd: [0.4, 5.6], yd: [-30, 40], xticks: xs, fxt: v => ['sample', '2 MHz', 'chip', '1 ms', '20 ms'][v - 1], xl: 'stage in the receiver', yl: 'SNR (dB)',
+      xname: 'stage', fx: v => st[Math.round(v) - 1] ? st[Math.round(v) - 1][0] : '', fy: v => fmt(v, 1) + ' dB',
+      series: [{ name: 'SNR', kind: 'bars', bw: 1, x: xs, y: ys, c: 's1' }],
+      anno: [{ type: 'hline', y: 9.6, label: 'Eb/N₀ for BER 10⁻⁵', c: 's2' }, { type: 'hline', y: 0, dash: '1 0', sw: .8 }, { type: 'text', x: 0.5, y: 2, label: 'above 0 dB: signal > noise' }]
+        .concat(xs.map((x, i) => ({ type: 'text', x, y: ys[i] >= 0 ? ys[i] + 2 : ys[i] - 4.5, label: (ys[i] > 0 ? '+' : '') + fmt(ys[i], 1), anchor: 'middle' })))
+        .concat([{ type: 'text', x: 3.5, y: 33, label: `processing gain: +${fmt(ys[4] - ys[2], 1)} dB from chip to bit`, anchor: 'middle' }]) });
+    const snrChip = 10 ** ((cn0 - dB(FCHIP)) / 10), mu = Math.sqrt(N * snrChip);
+    const zmax = Math.max(5, mu + 4), z = range(-4.5, zmax, 600), pdf = (v, m) => Math.exp(-0.5 * (v - m) ** 2) / Math.sqrt(2 * Math.PI);
+    $('#pg-dist-t').textContent = `Correlator output after summing N = ${N.toLocaleString('en-US')} chips (G_p = ${fmt(dB(N), 1)} dB, SNR_out = ${fmt(dB(N * snrChip), 1)} dB)`;
+    plot($('#pg-dist'), { h: 210, xd: [-4.5, zmax], yd: [0, 0.45], xl: 'correlator output (units of output noise σ)', xname: 'z', fx: v => fmt(v, 2) + 'σ', fy: v => fmt(v, 3),
+      series: [{ kind: 'area', x: z, y: z.map(v => pdf(v, 0)), c: 's2', op: .18 }, { kind: 'area', x: z, y: z.map(v => pdf(v, mu)), c: 's1', op: .18 },
+        { name: 'noise only', x: z, y: z.map(v => pdf(v, 0)), c: 's2' }, { name: 'signal + noise', x: z, y: z.map(v => pdf(v, mu)), c: 's1' }],
+      anno: [{ type: 'vline', x: mu, c: 's1', label: `√(N·SNR_chip) = ${fmt(mu, 2)}`, dy: 0 }] });
+  };
+  slider('pg-cn0', v => v + ' dB-Hz', draw); slider('pg-n', v => 'N = ' + Math.max(1, Math.round(10 ** v)).toLocaleString('en-US'), draw)();
+  $('#pg-cn0-o').textContent = $('#pg-cn0').value + ' dB-Hz';
+};
+
+INIT.loss = () => {
+  const df = range(-1500, 1500, 601), Ts = [[1, 's1'], [2, 's2'], [5, 's3']];
+  plot($('#loss-f'), { h: 240, xd: [-1500, 1500], yd: [-15, 1], xl: 'frequency error Δf (Hz)', yl: 'loss (dB)', xname: 'Δf', fx: v => fmt(v, 0) + ' Hz', fy: v => fmt(v, 2) + ' dB',
+    series: Ts.map(([T, c]) => ({ name: `T_coh = ${T} ms`, x: df, y: df.map(f => Math.max(-40, dB(sinc(Math.PI * f * T / 1000) ** 2 + 1e-12))), c })),
+    anno: [{ type: 'band', x0: -250, x1: 250 }, { type: 'text', x: -240, y: -13.5, label: '±250 Hz = half of a 500 Hz bin' }] });
+  const dt = range(-1.2, 1.2, 241);
+  plot($('#loss-t'), { h: 200, xd: [-1.2, 1.2], yd: [-15, 1], xl: 'code-phase error Δτ (chips)', yl: 'loss (dB)', xname: 'Δτ', fx: v => fmt(v, 2) + ' ch', fy: v => fmt(v, 2) + ' dB',
+    series: [{ name: '(1 − |Δτ|/Tc)²', x: dt, y: dt.map(t => Math.max(-40, dB(tri(t) ** 2 + 1e-12))), c: 's1' }],
+    anno: [{ type: 'band', x0: -0.25, x1: 0.25 }, { type: 'pt', x: 0.25, y: dB(0.75 ** 2), c: 's2', label: '¼ chip: −2.5 dB' }] });
+};
+
+INIT.det = () => {
+  const draw = () => {
+    const cn0 = +$('#det-cn0').value, T = +$('#det-t').value / 1000, pfa = 10 ** +$('#det-pfa').value;
+    const snr = 10 ** (cn0 / 10) * T, A = Math.sqrt(2 * snr), Vt = Math.sqrt(-2 * Math.log(pfa));
+    const zmax = Math.max(A + 5, Vt + 3, 7), z = range(0, zmax, 500);
+    const p0 = z.map(v => v * Math.exp(-v * v / 2)), p1 = z.map(v => ricePdf(v, A));
+    const zr = z.filter(v => v >= Vt);
+    const Pd = marcumQ1(A, Vt);
+    const ymax = Math.max(...p0, ...p1) * 1.12;
+    plot($('#det-pdf'), { h: 240, xd: [0, zmax], yd: [0, ymax], xl: 'envelope z / σ', xname: 'z', fx: v => fmt(v, 2), fy: v => fmt(v, 4),
+      series: [{ kind: 'area', x: zr, y: zr.map(v => v * Math.exp(-v * v / 2)), c: 's2', op: .35 }, { kind: 'area', x: zr, y: zr.map(v => ricePdf(v, A)), c: 's1', op: .2 },
+        { name: 'H₀: noise only (Rayleigh)', x: z, y: p0, c: 's2' }, { name: `H₁: signal + noise (Rice, A/σ = ${fmt(A, 2)})`, x: z, y: p1, c: 's1' }],
+      anno: [{ type: 'vline', x: Vt, label: `V_t = ${fmt(Vt, 2)}σ`, c: 's8' }] });
+    const cx = range(25, 50, 101), tl = [[1, 's1'], [5, 's2'], [20, 's3']];
+    plot($('#det-roc'), { h: 220, xd: [25, 50], yd: [0, 1.02], xl: 'C/N₀ (dB-Hz)', yl: 'P_d', xname: 'C/N₀', fx: v => fmt(v, 1) + ' dB-Hz', fy: v => fmt(v, 3),
+      series: tl.map(([t, c]) => ({ name: `T_coh = ${t} ms`, x: cx, y: cx.map(v => marcumQ1(Math.sqrt(2 * 10 ** (v / 10) * t / 1000), Vt)), c })),
+      anno: [{ type: 'pt', x: cn0, y: Pd, c: 's8', label: `P_d = ${fmt(Pd, 3)}` }] });
+    $('#det-stats').innerHTML = statHTML([[fmt(dB(snr), 1) + ' dB', 'post-corr. SNR'], [fmt(Vt, 2) + 'σ', 'threshold V_t'], [pfa.toExponential(1), 'P_fa'], [fmt(Pd, 3), 'P_d']]);
+  };
+  slider('det-cn0', v => v + ' dB-Hz', draw); slider('det-t', v => v + ' ms', draw); slider('det-pfa', v => '10^' + v, draw)();
+  $('#det-cn0-o').textContent = $('#det-cn0').value + ' dB-Hz'; $('#det-t-o').textContent = $('#det-t').value + ' ms';
+};
+
+INIT.dll = () => {
+  const disc = (e, d) => { const E = tri(e - d / 2), L = tri(e + d / 2); return E + L > 0 ? (2 - d) / 2 * (E - L) / (E + L) : 0; };
+  const sraw = (e, d) => (tri(e - d / 2) - tri(e + d / 2)) / 2;
+  const draw = () => {
+    const e = +$('#dll-e').value, d = +$('#dll-d').value;
+    const t = range(-2, 2, 401);
+    const E = tri(e - d / 2), P = tri(e), L = tri(e + d / 2);
+    // correlation seen by replica at offset: x axis = replica offset relative to true; triangle peaked at 0.
+    plot($('#dll-tri'), { h: 220, xd: [-2, 2], yd: [0, 1.15], xl: 'replica delay − true delay (chips)', xname: 'offset', fx: v => fmt(v, 2) + ' ch', fy: v => fmt(v, 3),
+      series: [{ name: 'R(τ)', x: t, y: t.map(tri), c: 's1' }],
+      anno: [{ type: 'vline', x: 0, label: 'true', dash: '2 3' },
+        { type: 'pt', x: e - d / 2, y: E, c: 's2', label: 'E', dx: -6, anchor: 'end' }, { type: 'pt', x: e, y: P, c: 's7', label: 'P' }, { type: 'pt', x: e + d / 2, y: L, c: 's3', label: 'L' }] });
+    const ex = range(-1.6, 1.6, 641);
+    plot($('#dll-s'), { h: 220, xd: [-1.6, 1.6], yd: [-0.65, 0.65], xl: 'code error ε (chips)', yl: 'D(ε)', xname: 'ε', fx: v => fmt(v, 2) + ' ch', fy: v => fmt(v, 3),
+      series: [[1, 's1'], [0.5, 's2'], [0.1, 's3']].map(([dd, c]) => ({ name: `d = ${dd}`, x: ex, y: ex.map(v => sraw(v, dd)), c })).concat([{ name: 'ideal D = ε', x: [-0.6, 0.6], y: [-0.6, 0.6], c: 's7', dash: '2 3', sw: 1.2 }]),
+      anno: [{ type: 'pt', x: e, y: sraw(e, d), c: 's8', label: `your d = ${d}` }, { type: 'hline', y: 0, dash: '1 0', sw: 0.6 }] });
+    $('#dll-stats').innerHTML = statHTML([[fmt(E, 3), 'Early |E|'], [fmt(P, 3), 'Prompt |P|'], [fmt(L, 3), 'Late |L|'], [fmt(disc(e, d), 3), 'D(ε) chips'], [fmt(disc(e, d) * CHIP_M, 1) + ' m', 'error estimate']]);
+  };
+  slider('dll-e', v => fmt(v, 2) + ' ch', draw); slider('dll-d', v => fmt(v, 2) + ' ch', draw)();
+  $('#dll-e-o').textContent = fmt(+$('#dll-e').value, 2) + ' ch';
+};
+
+INIT.costas = () => {
+  const draw = () => {
+    const th = +$('#cos-th').value * Math.PI / 180, cn0 = +$('#cos-cn0').value;
+    const T = 0.02, A = Math.sqrt(2 * 10 ** (cn0 / 10) * T), g = gaussFn(rng(5)), r = rng(99);
+    const I1 = [], Q1 = [], I2 = [], Q2 = [];
+    let sumNum = 0;
+    for (let k = 0; k < 200; k++) {
+      const D = r() < 0.5 ? 1 : -1, I = A * D * Math.cos(th) + g(), Q = A * D * Math.sin(th) + g();
+      (D > 0 ? I1 : I2).push(I); (D > 0 ? Q1 : Q2).push(Q);
+      sumNum += Math.atan(Q / I);
+    }
+    const lim = Math.ceil(A + 4);
+    plot($('#cos-iq'), { w: 520, h: 300, m: { l: 50 }, xd: [-lim, lim], yd: [-lim * 0.62, lim * 0.62], xl: 'I_P (σ units)', yl: 'Q_P', xname: 'I', fx: v => fmt(v, 1), fy: v => fmt(v, 1),
+      series: [{ name: 'bit D = +1', kind: 'dots', r: 3.5, x: I1, y: Q1, c: 's1' }, { name: 'bit D = −1', kind: 'dots', r: 3.5, x: I2, y: Q2, c: 's2' }],
+      raw: ({ sx, sy }) => `<line x1="${sx(-lim * Math.cos(th))}" y1="${sy(-lim * Math.sin(th))}" x2="${sx(lim * Math.cos(th))}" y2="${sy(lim * Math.sin(th))}" stroke="var(--ink-3)" stroke-dasharray="4 3"/>
+        <line x1="${sx(-lim)}" y1="${sy(0)}" x2="${sx(lim)}" y2="${sy(0)}" class="axis"/><line x1="${sx(0)}" y1="${sy(-lim)}" x2="${sx(0)}" y2="${sy(lim)}" class="axis"/>`,
+      fty: v => fmt(v, 2), ftx: v => fmt(v, 2) });
+    const tt = range(-180, 180, 721);
+    const wrap = v => { while (v > 90) v -= 180; while (v < -90) v += 180; return v; };
+    plot($('#cos-disc'), { h: 210, xd: [-180, 180], yd: [-190, 190], xticks: [-180, -90, 0, 90, 180], yticks: [-180, -90, 0, 90, 180], xl: 'true phase error θₑ (deg)', yl: 'output (deg)', xname: 'θₑ', fx: v => fmt(v, 0) + '°', fy: v => fmt(v, 1) + '°',
+      series: [{ name: 'Costas atan(Q/I)', x: tt, y: tt.map(v => wrap(v)).map((v, i, a) => (i && Math.abs(v - a[i - 1]) > 90) ? NaN : v), c: 's1' },
+        { name: 'atan2(Q, I): pure PLL, breaks on bit flips', x: tt, y: tt, c: 's2', dash: true },
+        { name: 'I·Q (scaled): sin 2θ', x: tt, y: tt.map(v => 90 * Math.sin(2 * v * Math.PI / 180)), c: 's3' }],
+      anno: [{ type: 'vline', x: th * 180 / Math.PI, c: 's8' }] });
+    const est = sumNum / 200 * 180 / Math.PI;
+    const bitErr = th * 180 / Math.PI;
+    $('#cos-res').innerHTML = `Mean Costas output: <b>${fmt(est, 1)}°</b> (true θₑ = ${fmt(bitErr, 0)}°; Costas reads it modulo 180° as ${fmt(wrap(bitErr), 0)}°). Prompt SNR per 20 ms dump: <b>${fmt(dB(A * A / 2), 1)} dB</b>.`;
+  };
+  slider('cos-th', v => v + '°', draw); slider('cos-cn0', v => v + ' dB-Hz', draw)();
+  $('#cos-th-o').textContent = $('#cos-th').value + '°';
+};
+
+INIT.prange = () => {
+  const draw = () => {
+    const tau = +$('#pr-tau').value, N = +$('#pr-n').value;
+    const travel = N * 1e-3 + tau / FCHIP;
+    const svg = $('#pr-svg');
+    const x0 = 40, x1 = 630, yT = 70, yR = 230;
+    // time scale: show 6 ms window around reception
+    const msPx = 90;
+    let s = `<defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="d-arrow"/></marker></defs>`;
+    s += `<text x="${x0}" y="${yT - 34}" class="d-text">Satellite: transmitted code epochs (its clock)</text>
+      <line x1="${x0}" y1="${yT}" x2="${x1}" y2="${yT}" class="d-line" marker-end="url(#ar6)"/>
+      <text x="${x0}" y="${yR - 34}" class="d-text">Receiver: received code epochs (delayed by travel time)</text>
+      <line x1="${x0}" y1="${yR}" x2="${x1}" y2="${yR}" class="d-line" marker-end="url(#ar6)"/>`;
+    const frac = tau / NCHIP; // fraction of 1 ms
+    for (let k = 0; k <= 6; k++) {
+      const x = x0 + 20 + k * msPx;
+      s += `<line x1="${x}" y1="${yT - 10}" x2="${x}" y2="${yT + 10}" class="d-line"/><text x="${x}" y="${yT + 26}" text-anchor="middle" class="d-sub">epoch ${k}</text>`;
+      const xr = x + frac * msPx;
+      if (xr < x1 - 10) s += `<line x1="${xr}" y1="${yR - 10}" x2="${xr}" y2="${yR + 10}" class="d-line acc"/>`;
+    }
+    // chips pattern on tx between epoch 0-1
+    const c = caGen(1).pm;
+    let d = ''; for (let i = 0; i < 90; i++) { const v = c[i * 11 % NCHIP]; d += `${i ? 'L' : 'M'}${x0 + 20 + i},${yT - 4 - v * 4}`; }
+    s += `<path d="${d}" class="d-line" style="stroke:var(--ink-3);stroke-width:1"/>`;
+    // propagation arrow from epoch 0 to rx epoch (N + frac) — drawn schematically
+    const xa = x0 + 20 + msPx, xb = x0 + 20 + msPx + frac * msPx;
+    s += `<line x1="${xa}" y1="${yT + 12}" x2="${xb}" y2="${yR - 12}" class="d-line acc2" marker-end="url(#ar6)"/>
+      <text x="${(xa + xb) / 2 + 10}" y="${(yT + yR) / 2}" class="d-sub" style="fill:var(--s2)">travel ≈ ${fmt(travel * 1000, 3)} ms</text>
+      <text x="${(xa + xb) / 2 + 10}" y="${(yT + yR) / 2 + 14}" class="d-sub">(${N} whole epochs elapse in transit — not drawn to scale)</text>`;
+    // bracket: fractional part
+    const xe = x0 + 20 + 3 * msPx;
+    s += `<line x1="${xe}" y1="${yR + 24}" x2="${xe + frac * msPx}" y2="${yR + 24}" class="d-line acc"/>
+      <line x1="${xe}" y1="${yR + 18}" x2="${xe}" y2="${yR + 30}" class="d-line acc"/><line x1="${xe + frac * msPx}" y1="${yR + 18}" x2="${xe + frac * msPx}" y2="${yR + 30}" class="d-line acc"/>
+      <text x="${xe}" y="${yR + 48}" class="d-sub" style="fill:var(--s1)">code phase = ${fmt(tau, 1)} chips → ${fmt(tau / FCHIP * 1e6, 2)} µs (DLL)</text>
+      <text x="${xe}" y="${yR + 64}" class="d-sub">+ N_ms = ${N} ms from bit/frame sync</text>
+      <text x="${xe}" y="${yR + 80}" class="d-sub">(offset from the receiver's own 1 ms grid)</text>`;
+    svg.innerHTML = s;
+    const rho = CLIGHT * travel;
+    $('#pr-stats').innerHTML = statHTML([[fmt(tau * CHIP_M / 1000, 3) + ' km', 'from code phase'], [fmt(N * CLIGHT / 1e6, 1) + ' km', 'from whole ms'], [fmt(rho / 1000, 1) + ' km', 'pseudorange ρ']]);
+  };
+  slider('pr-tau', v => fmt(v, 1), draw); slider('pr-n', v => v + ' ms', draw)();
+  $('#pr-tau-o').textContent = fmt(+$('#pr-tau').value, 1);
+};
+
+INIT.prec = () => {
+  const draw = () => {
+    const Bn = +$('#pr-bn').value, T = +$('#pr-t').value / 1000, cx = range(25, 55, 121);
+    const sig = (c, d) => { const C = 10 ** (c / 10); return Math.sqrt(Bn * d / (2 * C) * (1 + 2 / ((2 - d) * T * C))) * CHIP_M; };
+    plot($('#prec-plot'), { h: 380, xd: [25, 55], yd: [0.01, 30], ylog: true, fyt: v => v >= 1 ? fmt(v, 0) + ' m' : (v * 100).toFixed(0) + ' cm',
+      xl: 'C/N₀ (dB-Hz)', yl: 'σ_ρ (m), log scale', xname: 'C/N₀', fx: v => fmt(v, 1) + ' dB-Hz', fy: v => v >= 1 ? fmt(v, 2) + ' m' : fmt(v * 100, 1) + ' cm',
+      series: [[1, 's1'], [0.5, 's2'], [0.1, 's3']].map(([d, c]) => ({ name: `d = ${d} chip`, x: cx, y: cx.map(v => sig(v, d)), c })),
+      anno: [{ type: 'vline', x: 45, label: 'typical open sky' }, { type: 'pt', x: 45, y: sig(45, 1), c: 's1', label: fmt(sig(45, 1), 2) + ' m' }, { type: 'pt', x: 45, y: sig(45, 0.1), c: 's3', label: fmt(sig(45, 0.1) * 100, 0) + ' cm', dy: 16 }] });
+  };
+  slider('pr-bn', v => fmt(v, 1) + ' Hz', draw); slider('pr-t', v => v + ' ms', draw)();
+  $('#pr-bn-o').textContent = fmt(+$('#pr-bn').value, 1) + ' Hz';
+};
+
+INIT.mp = () => {
+  let ph = 0;
+  const Rc = (x, a, dl, p) => tri(x) + a * Math.cos(p * Math.PI / 180) * tri(x - dl);
+  const err = (a, dl, p, d) => {
+    // zero of |Rc(e - d/2)| - |Rc(e + d/2)| closest to 0
+    const f = e => Math.abs(Rc(e - d / 2, a, dl, p)) - Math.abs(Rc(e + d / 2, a, dl, p));
+    let best = null; const st = 0.002;
+    for (let e = -1; e < 1.6; e += st) { const fa = f(e), fb = f(e + st); if (fa === 0 || fa * fb < 0) {
+      let lo = e, hi = e + st; for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (f(lo) * f(m) <= 0) hi = m; else lo = m; }
+      const z = (lo + hi) / 2; if (f(z - 0.01) < 0 || true) { if (best === null || Math.abs(z) < Math.abs(best)) best = z; } } }
+    return best === null ? 0 : best;
+  };
+  const getPh = seg('mp-ph', v => { ph = +v; draw(); });
+  function draw() {
+    const a = +$('#mp-a').value, dl = +$('#mp-dl').value, d = +$('#mp-d').value;
+    const t = range(-1.5, 3, 451);
+    const e = err(a, dl, ph, d);
+    plot($('#mp-corr'), { h: 220, xd: [-1.5, 3], yd: [-1, 1.7], xl: 'replica delay relative to direct path (chips)', xname: 'τ', fx: v => fmt(v, 2) + ' ch', fy: v => fmt(v, 3),
+      series: [{ name: 'direct R(τ)', x: t, y: t.map(tri), c: 's1', dash: '5 3', sw: 1.5 }, { name: `reflected α·cosφ·R(τ−δ)`, x: t, y: t.map(v => a * Math.cos(ph * Math.PI / 180) * tri(v - dl)), c: 's2', dash: '5 3', sw: 1.5 },
+        { name: 'composite R_c(τ)', x: t, y: t.map(v => Rc(v, a, dl, ph)), c: 's7', sw: 2.4 }],
+      anno: [{ type: 'pt', x: e - d / 2, y: Rc(e - d / 2, a, dl, ph), c: 's3', label: 'E', anchor: 'end', dx: -6 }, { type: 'pt', x: e + d / 2, y: Rc(e + d / 2, a, dl, ph), c: 's3', label: 'L' },
+        { type: 'vline', x: e, c: 's8', label: `lock ε = ${fmt(e, 3)} ch` }, { type: 'vline', x: 0, dash: '2 3' }] });
+    const dx = range(0, 1.6, 161);
+    const env = (dd, pp) => dx.map(v => err(a, v, pp, dd) * CHIP_M);
+    plot($('#mp-env'), { h: 220, xd: [0, 1.6], yd: [-120, 120], xl: 'multipath delay δ (chips)', yl: 'range error (m)', fxt: v => fmt(v, 1), xname: 'δ', fx: v => fmt(v, 2) + ' ch (' + fmt(v * CHIP_M, 0) + ' m)', fy: v => fmt(v, 1) + ' m',
+      series: [{ name: 'd = 1, in-phase', x: dx, y: env(1, 0), c: 's1' }, { name: 'd = 1, out-of-phase', x: dx, y: env(1, 180), c: 's1', dash: true },
+        { name: 'd = 0.1, in-phase', x: dx, y: env(0.1, 0), c: 's2' }, { name: 'd = 0.1, out-of-phase', x: dx, y: env(0.1, 180), c: 's2', dash: true }],
+      anno: [{ type: 'hline', y: 0, dash: '1 0', sw: .6 }, { type: 'pt', x: dl, y: e * CHIP_M, c: 's8', label: 'current' }] });
+    $('#mp-env-a').textContent = a;
+    $('#mp-stats').innerHTML = statHTML([[fmt(e, 4) + ' ch', 'tracking bias ε'], [fmt(e * CHIP_M, 1) + ' m', 'range error'], [fmt(dl * CHIP_M, 0) + ' m', 'extra path length']]);
+  }
+  slider('mp-a', v => fmt(v, 2), draw); slider('mp-dl', v => fmt(v, 2) + ' ch', draw); slider('mp-d', v => fmt(v, 2) + ' ch', draw)();
+  $('#mp-a-o').textContent = fmt(+$('#mp-a').value, 2); $('#mp-dl-o').textContent = fmt(+$('#mp-dl').value, 2) + ' ch';
+};
+
+INIT.cn0 = () => {
+  let seed = 3;
+  const draw = () => {
+    const g = gaussFn(rng(seed)), r = rng(seed + 100), M = 20, K = 50, T = 0.001;
+    const tx = [], ex = [];
+    for (let c = 24; c <= 52; c += 0.5) {
+      const A = Math.sqrt(2 * 10 ** (c / 10) * T);
+      let mu = 0;
+      for (let k = 0; k < K; k++) {
+        const D = r() < 0.5 ? 1 : -1, th = r() * 0.2;
+        let si = 0, sq = 0, wb = 0;
+        for (let i = 0; i < M; i++) { const I = A * D * Math.cos(th) + g(), Q = A * D * Math.sin(th) + g(); si += I; sq += Q; wb += I * I + Q * Q; }
+        mu += (si * si + sq * sq) / wb;
+      }
+      mu /= K;
+      const est = (mu - 1) / (M - mu) / T;
+      tx.push(c); ex.push(est > 0 ? dB(est) : NaN);
+    }
+    plot($('#cn0-plot'), { h: 330, xd: [23, 53], yd: [15, 55], xl: 'true C/N₀ (dB-Hz)', yl: 'estimated C/N₀ (dB-Hz)', xname: 'true', fx: v => fmt(v, 1), fy: v => fmt(v, 1) + ' dB-Hz', fyt: v => fmt(v, 0),
+      series: [{ name: 'ideal (estimate = truth)', x: [23, 53], y: [23, 53], c: 's2', dash: true, hover: false }, { name: 'NWPR estimate', kind: 'dots', x: tx, y: ex, c: 's1' }] });
+  };
+  $('#cn0-new').onclick = () => { seed++; draw(); };
+  draw();
+};
+
+INIT.modern = () => {
+  const n = []; for (let e = 2.5; e <= 6.2; e += 0.02) n.push(10 ** e);
+  const lx = n.map(v => Math.log10(v));
+  const pts = [[511, 'GLONASS'], [1023, 'C/A'], [2046, 'B1I'], [4092, 'E1'], [10230, 'L5 / L1C'], [767250, 'L2C CL']];
+  plot($('#modern-plot'), { h: 360, xd: [2.5, 6.2], yd: [-62, -15], xticks: [3, 4, 5, 6], fxt: v => '10' + '⁰¹²³⁴⁵⁶'[v], xl: 'code length N (chips, log scale)', yl: 'cross-correlation level (dB)', xname: 'N', fx: v => Math.round(10 ** v).toLocaleString('en-US'), fy: v => fmt(v, 1) + ' dB',
+    series: [{ name: '≈ 1/√N (typical)', x: lx, y: n.map(v => -10 * Math.log10(v)), c: 's1' },
+      { name: 'C/A worst case 65/1023', kind: 'dots', r: 5, x: [Math.log10(1023)], y: [20 * Math.log10(65 / 1023)], c: 's2' }],
+    anno: pts.map(([N, l], i) => ({ type: 'pt', x: Math.log10(N), y: -10 * Math.log10(N), c: 's1', r: 4, label: l, dy: i % 2 ? -10 : 18, anchor: i === pts.length - 1 ? 'end' : 'start', dx: i === pts.length - 1 ? -8 : 8 })) });
+};
+
+function drawPipeline() {
+  const st = [['Antenna + RF', 'down-convert, ADC'], ['Acquisition', 'search τ, f per PRN'], ['Tracking', 'DLL (E/P/L) + Costas'], ['Data decode', 'bit sync, TOW'], ['Pseudorange', 'ρ = c(t_rx − t_tx)'], ['PVT', '≥ 4 PRNs → x, y, z, δt']];
+  const role = ['code shapes 2 MHz band', 'auto-/cross-correlation', 'correlation triangle', 'code epochs = 1 ms clock', 'code phase = time stamp', 'CDMA → many ranges'];
+  let s = ''; const w = 140, gap = 24, y = 40;
+  st.forEach(([a, b], i) => {
+    const x = 10 + i * (w + gap), acc = i >= 1 && i <= 4;
+    s += `<rect x="${x}" y="${y}" width="${w}" height="62" rx="8" class="d-box${acc ? ' acc' : ''}"/>
+      <text x="${x + w / 2}" y="${y + 26}" text-anchor="middle" class="d-text" style="font-weight:600">${a}</text>
+      <text x="${x + w / 2}" y="${y + 44}" text-anchor="middle" class="d-sub">${b}</text>
+      <text x="${x + w / 2}" y="${y + 88}" text-anchor="middle" class="d-sub">role of the PRN:</text>
+      <text x="${x + w / 2}" y="${y + 104}" text-anchor="middle" class="d-sub" style="fill:var(--s1)">${role[i]}</text>`;
+    if (i < st.length - 1) s += `<line x1="${x + w}" y1="${y + 31}" x2="${x + w + gap - 2}" y2="${y + 31}" class="d-line" marker-end="url(#ar3)"/>`;
+  });
+  s += `<text x="10" y="22" class="d-sub">Signal flow →</text>`;
+  $('#pipe').innerHTML = s;
+}
+
+/* =====================================================================
+   Deck controller
+   ===================================================================== */
+const slides = Array.from(document.querySelectorAll('.slide'));
+const done = new Set();
+let cur = 0;
+function show(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  slides[cur].classList.remove('active'); cur = i; const sl = slides[cur]; sl.classList.add('active'); sl.scrollTop = 0;
+  $('#count').textContent = `${cur + 1} / ${slides.length}`;
+  $('#bar i').style.width = `${(cur + 1) / slides.length * 100}%`;
+  $('#ttl').textContent = sl.dataset.title || '';
+  if (location.hash !== '#' + (cur + 1)) history.replaceState(null, '', '#' + (cur + 1));
+  const k = sl.dataset.init;
+  if (k && !done.has(k)) { done.add(k); try { INIT[k](); } catch (err) { console.error(err); } }
+}
+$('#prev').onclick = () => show(cur - 1);
+$('#next').onclick = () => show(cur + 1);
+$('#bar').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); show(Math.floor((e.clientX - r.left) / r.width * slides.length)); };
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,select,textarea')) return;
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+  else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+  else if (e.key === 'Home') show(0); else if (e.key === 'End') show(slides.length - 1);
+});
+let tx0 = null;
+document.addEventListener('touchstart', e => { tx0 = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => { if (tx0 === null) return; const dx = e.changedTouches[0].clientX - tx0;
+  if (Math.abs(dx) > 70 && !e.target.closest('input,.plot,svg')) show(cur + (dx < 0 ? 1 : -1)); tx0 = null; });
+$('#agenda').addEventListener('click', e => { const c = e.target.closest('[data-go]'); if (c) show(slides.indexOf(document.getElementById(c.dataset.go))); });
+// number the steps and the agenda ranges from the DOM so inserted slides stay consistent
+(function () {
+  let k = 0;
+  slides.forEach(sl => { const kk = sl.querySelector('.kicker[data-step]'); if (kk) kk.textContent = 'Step ' + (++k) + ' · ' + kk.textContent; });
+  const parts = ['I', 'II', 'III', 'IV', 'V', 'VI'], starts = parts.map(p => slides.indexOf(document.getElementById('p' + p)));
+  parts.forEach((p, i) => { const end = i < parts.length - 1 ? starts[i + 1] - 1 : slides.length - 2;
+    const el = document.querySelector(`[data-part="${p}"]`); if (el) el.textContent = `PART ${p} · slides ${starts[i] + 1}–${end + 1}`; });
+})();
+window.addEventListener('hashchange', () => { const n = parseInt(location.hash.slice(1), 10); if (n && n - 1 !== cur) show(n - 1); });
+
+// theme
+(function () {
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('prn-theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  $('#theme').onclick = () => {
+    const isDark = cssVar('--surface') === '#1a1a19';
+    root.dataset.theme = isDark ? 'light' : 'dark';
+    try { localStorage.setItem('prn-theme', root.dataset.theme); } catch (e) {}
+    themeHooks.forEach(f => f());
+  };
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => themeHooks.forEach(f => f()));
+})();
+
+drawRoles(); drawGrid(); drawPipeline();
+slides[0].classList.add('active');
+const start = parseInt(location.hash.slice(1), 10);
+cur = 0; show(start ? start - 1 : 0);
+</script>
+</body>
+</html>
