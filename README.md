@@ -21,7 +21,9 @@ Each technical slide starts with an **"In plain words"** box (intuition and an a
 
 ## Local Positioning Systems (LPS) vs GNSS: interactive presentation
 
-Open [`LPS_Local_Positioning_Systems.html`](LPS_Local_Positioning_Systems.html) in any modern browser. It is one self-contained page that scrolls freely but is divided into 27 presentable sections (title plus 26 numbered). Use ← / → to jump between sections, `F` to toggle focus dimming of the sections not in view, and `M` for the section list. Equations (MathJax) and fonts load from a CDN; every figure is computed live in the browser, and most are interactive (drag points, move sliders).
+Open [`LPS_Local_Positioning_Systems.html`](LPS_Local_Positioning_Systems.html) in any modern browser. It is one self-contained page that scrolls freely but is divided into 27 presentable sections (title plus 26 numbered). Use ← / → to jump between sections, `F` to toggle focus dimming of the sections not in view, and `M` for the section list. Every figure is computed live in the browser, and most are interactive (drag points, move sliders).
+
+The file works **fully offline**: all equations are pre-rendered to inline SVG with MathJax at build time (no MathJax script is loaded), and the Inter and JetBrains Mono fonts (Latin, Latin Extended and Greek) are embedded. It needs no network connection, which makes it safe to present from a laptop without internet.
 
 The scope is **outdoor and wide-area** positioning: indoor-only solutions are deliberately left out.
 

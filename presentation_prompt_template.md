@@ -64,13 +64,14 @@ Cover these topics, in a logical teaching order (foundations → math → real-w
 
 ## Technical constraints
 
-- One `.html` file. The only external resources: MathJax from cdnjs and Google Fonts. All other JS/CSS inline, no frameworks.
+- One `.html` file that works **fully offline** (it will be presented without internet): pre-render every equation to inline SVG at build time with MathJax in Node (`mathjax-full`, SVG output, global font cache), so no MathJax script loads at runtime; embed the fonts as base64 `woff2` (variable fonts, Latin + Latin Extended + Greek subsets); no external URLs at all. All JS/CSS inline, no frameworks. Redraw canvases once `document.fonts.ready` resolves. Let long inline equations scale down on narrow screens.
+- Verify offline behaviour by rendering the page headlessly with all network requests blocked.
 - Organise the JS as a small framework: a figure registry, a shared render loop, a resize observer, a drag helper, slider binding, and shared math helpers (e.g. matrix inverse, least squares, eigenvalues).
 - Keep facts accurate. Where a number, date or company status is uncertain, use approximate wording or hedge it rather than inventing precision. Label qualitative charts as qualitative.
 
 ## Process and deliverables
 
 1. Before writing the page, compute the worked-example numbers independently (e.g. in Python) and use exactly those values.
-2. Build the page; check the script for syntax errors; render it headlessly and check every section for console errors, overlapping labels and horizontal overflow at desktop and phone widths. Fix what you find.
+2. Build the page; check the script for syntax errors; render it headlessly (network blocked, light and dark themes) and check every section for console errors, equation-rendering errors, overlapping labels and horizontal overflow at desktop and phone widths. Fix what you find.
 3. Save it as `{FILENAME}.html` in the repository, add a short section to the README (how to open and navigate it, plus a table of parts and topics), commit and push.
 4. Also publish it as a viewable page if the environment supports it, and tell me which facts you were unsure about.
